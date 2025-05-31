@@ -5,7 +5,7 @@ A TypeScript-based NPM package that enhances the developer experience with Prism
 ## 🎯 Features
 - **Column Synchronization**: Create migrations to sync database column order to match Prisma schema field order
 - **Migration Fixing**: Fix column order in migration files to respect schema field order
-- **Database Support**: Support for MySQL, MariaDB, and SQLite databases
+- **Database Support**: Support for MySQL and MariaDB databases
 - **CLI Interface**: Easy-to-use command-line interface for all operations
 
 ## 🚀 Installation
@@ -20,7 +20,7 @@ yarn add prisma-reorder
 
 ✅ **MySQL** - Full support for column reordering  
 ✅ **MariaDB** - Full support for column reordering  
-✅ **SQLite** - Full support for column reordering  
+❌ **SQLite** - Not supported (limitations in column reordering without table recreation)  
 ❌ **PostgreSQL** - Not supported (limitations in column reordering)  
 ❌ **SQL Server** - Not supported (limitations in column reordering)
 

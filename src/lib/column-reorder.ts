@@ -131,10 +131,6 @@ export class ColumnReorderGenerator {
           targetPosition,
         );
 
-      case 'sqlite':
-        // SQLite requires table recreation for column reordering
-        return this.generateSQLiteReorderSQL(tableName, fieldOrder);
-
       default:
         return null;
     }
@@ -155,22 +151,5 @@ export class ColumnReorderGenerator {
       const afterColumn = fieldOrder[targetPosition - 1];
       return `ALTER TABLE \`${tableName}\` MODIFY COLUMN \`${columnName}\` /* TYPE */ AFTER \`${afterColumn}\`;`;
     }
-  }
-
-  /**
-   * Generate SQLite specific column reorder SQL (table recreation)
-   */
-  private generateSQLiteReorderSQL(
-    tableName: string,
-    fieldOrder: string[],
-  ): string {
-    const orderedColumns = fieldOrder.map((field) => `\`${field}\``).join(', ');
-
-    return `-- SQLite column reordering requires table recreation
--- TODO: Generate complete table recreation script
--- 1. CREATE TABLE ${tableName}_new WITH correct column order
--- 2. INSERT INTO ${tableName}_new (${orderedColumns}) SELECT ${orderedColumns} FROM ${tableName}
--- 3. DROP TABLE ${tableName}
--- 4. ALTER TABLE ${tableName}_new RENAME TO ${tableName}`;
   }
 }

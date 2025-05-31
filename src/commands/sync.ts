@@ -33,7 +33,7 @@ export class SyncCommand {
         console.error(
           `❌ Database provider "${validation.provider}" is not supported`,
         );
-        console.error('Supported providers: mysql, mariadb, sqlite');
+        console.error('Supported providers: mysql, mariadb');
         if (validation.errors.length > 0) {
           validation.errors.forEach((error) => console.error(`   ${error}`));
         }

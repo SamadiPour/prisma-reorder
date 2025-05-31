@@ -1,6 +1,6 @@
 # Prisma Column Order Manager (TypeScript NPM Extension)
 
-Idea: Develop a TypeScript-based NPM package (Prisma extension/plugin) that enhances the developer experience with Prisma ORM by enabling automatic column reordering in supported SQL databases (MySQL, MariaDB, and SQLite) to match the column order defined in the Prisma schema.
+Idea: Develop a TypeScript-based NPM package (Prisma extension/plugin) that enhances the developer experience with Prisma ORM by enabling automatic column reordering in supported SQL databases (MySQL and MariaDB) to match the column order defined in the Prisma schema.
 
 ## Motivation
 
@@ -11,26 +11,24 @@ Maintaining a consistent column order improves readability, schema diff clarity,
 
 1. reorder-columns (Main Command)
 
-Analyzes the current Prisma schema and reorders the columns in each relevant table in the underlying database to match the field order in the schema file.
-- Operates safely by creating and running ALTER TABLE ... MODIFY COLUMN ... statements for MySQL/MariaDB, or equivalent logic for SQLite (e.g., table recreation).
-- Only generates the migration SQL and does not execute it automatically, allowing developers to review changes before applying.
-- Should optionally accept specific model names to limit scope.
-- Should provide clear output/logging about changes.
+    Analyzes the current Prisma schema and reorders the columns in each relevant table in the underlying database to match the field order in the schema file.
+    - Operates safely by creating and running ALTER TABLE ... MODIFY COLUMN ... statements for MySQL/MariaDB.
+    - Only generates the migration SQL and does not execute it automatically, allowing developers to review changes before applying.
+    - Should optionally accept specific model names to limit scope.
 
 2. check-latest-migration (Secondary Command)
 
-Scans the latest migration SQL file (from Prisma Migrate), and if it contains any ADD COLUMN operations, the tool will:
+    Scans the latest migration SQL file (from Prisma Migrate), and if it contains any ADD COLUMN operations, the tool will:
 
-- Validate whether the added column's order matches the schema.
-- If not, it will change the query to make the column appear in the correct order.
-- This ensures that any new columns added via migrations will also respect the defined order in the Prisma schema.
+   - Validate whether the added column's order matches the schema.
+   - If not, it will change the query to make the column appear in the correct order.
+   - This ensures that any new columns added via migrations will also respect the defined order in the Prisma schema.
 
 ## Supported Databases
 
-✅ MySQL
-✅ MariaDB
-✅ SQLite
-❌ Not supported: PostgreSQL, SQL Server — due to limitations in column reordering without dropping and recreating the table, or requiring full migration scripts.
+- ✅ MySQL
+- ✅ MariaDB
+- ❌ Not supported: PostgreSQL, SQL Server, SQLite — due to limitations in column reordering without dropping and recreating the table, or requiring full migration scripts.
 
 ## Safety & Limitations
 

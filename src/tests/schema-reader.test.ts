@@ -43,15 +43,6 @@ describe('SchemaReader', () => {
     expect(analysis.errors.length).toBeGreaterThan(0);
   });
 
-  it('should correctly analyze SQLite schema', async () => {
-    const analysis = await testSchema(
-      join(process.cwd(), 'prisma', 'sqlite-schema.prisma'),
-      'sqlite',
-      true,
-    );
-    expect(analysis.errors).toHaveLength(0);
-  });
-
   it('should handle missing schema file gracefully', async () => {
     const schemaReader = new SchemaReader('nonexistent.prisma');
     const analysis = await schemaReader.getSchemaAnalysis();

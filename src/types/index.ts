@@ -5,7 +5,7 @@
 /**
  * Supported database providers for column reordering
  */
-export const SUPPORTED_PROVIDERS = ['mysql', 'mariadb', 'sqlite'] as const;
+export const SUPPORTED_PROVIDERS = ['mysql', 'mariadb'] as const;
 export type SupportedProvider = (typeof SUPPORTED_PROVIDERS)[number];
 
 /**
