@@ -2,50 +2,55 @@
 
 import { Command } from 'commander';
 import { readFileSync } from 'fs';
-import { join, dirname } from 'path';
-import { fileURLToPath } from 'url';
+import { join } from 'path';
+import { SyncCommand, FixMigrationCommand } from './commands';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-const packageJson = JSON.parse(readFileSync(join(__dirname, '../package.json'), 'utf-8'));
+const packageJson = JSON.parse(
+  readFileSync(join(__dirname, '../package.json'), 'utf-8'),
+);
 const { version } = packageJson;
 
 const program = new Command();
 
 program
   .name('prisma-reorder')
-  .description('CLI tool for reordering Prisma schema')
+  .description('CLI tool for reordering Prisma schema columns')
   .version(version);
 
-// reorder-columns command
+// sync command (main command)
 program
   .command('sync')
-  .description('Creates a migration to sync database column order to match Prisma schema field order')
-  .option('-m, --model [models...]', 'Specify specific model names to reorder (defaults to all models)')
-  .option('-s, --schema [path]', 'Path to Prisma schema file', './prisma/schema.prisma')
+  .description(
+    'Generate SQL to sync database column order to match Prisma schema field order',
+  )
+  .option(
+    '-m, --model [models...]',
+    'Specify specific model names to reorder (defaults to all models)',
+  )
+  .option(
+    '-s, --schema [path]',
+    'Path to Prisma schema file',
+    './prisma/schema.prisma',
+  )
   .option('-v, --verbose', 'Show detailed output')
   .action(async (options) => {
-    console.log('🔄 Reordering columns...');
-    console.log('Options:', options);
-    
-    if (options.model) {
-      console.log('🎯 Targeting specific models:', options.model);
-    }
-    
-    // TODO: Implement column reordering logic
+    const syncCommand = new SyncCommand();
+    await syncCommand.execute(options);
   });
 
-// check-latest-migration command
+// fix-migration command
 program
   .command('fix-migration')
-  .description('Fix column order in the latest migration file')
-  .option('-m, --migrations-dir [path]', 'Path to migrations directory', './prisma/migrations')
+  .description('Fix column order issues in the latest migration file')
+  .option(
+    '-m, --migrations-dir [path]',
+    'Path to migrations directory',
+    './prisma/migrations',
+  )
   .option('-v, --verbose', 'Show detailed output')
   .action(async (options) => {
-    console.log('🔍 Checking latest migration...');
-    console.log('Options:', options);
-    
-    // TODO: Implement migration checking logic
+    const fixCommand = new FixMigrationCommand();
+    await fixCommand.execute(options);
   });
 
 program.parse(process.argv);

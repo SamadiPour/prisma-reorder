@@ -3,7 +3,6 @@
 A TypeScript-based NPM package that enhances the developer experience with Prisma ORM by enabling automatic column reordering in supported SQL databases (MySQL, MariaDB, and SQLite) to match the column order defined in the Prisma schema.
 
 ## 🎯 Features
-
 - **Column Synchronization**: Create migrations to sync database column order to match Prisma schema field order
 - **Migration Fixing**: Fix column order in migration files to respect schema field order
 - **Database Support**: Support for MySQL, MariaDB, and SQLite databases
@@ -25,7 +24,7 @@ yarn add prisma-reorder
 ❌ **PostgreSQL** - Not supported (limitations in column reordering)  
 ❌ **SQL Server** - Not supported (limitations in column reordering)
 
-## 🛠️ CLI Usage
+## Basic Usage
 
 ### Sync Column Order
 ```bash
@@ -44,13 +43,50 @@ npx prisma-reorder fix-migration --verbose
 
 ## 📚 Programmatic API
 
-```typescript
-// This API is not yet implemented
-import { PrismaReorder } from 'prisma-reorder';
+The Schema Reader module is currently implemented and provides the foundation for all schema analysis operations:
 
-// Will be available in future versions
-const reorder = new PrismaReorder('prisma/schema.prisma');
-const migration = await reorder.generateColumnOrderMigration();
+```typescript
+import { SchemaReader, SUPPORTED_PROVIDERS } from 'prisma-reorder';
+
+// Create a schema reader (defaults to prisma/schema.prisma)
+const reader = new SchemaReader();
+
+// Validate database support
+const validation = await reader.validateSupportedDatabase();
+console.log(`Provider: ${validation.provider}`);
+console.log(`Supported: ${validation.isSupported}`);
+
+// Get model names
+const models = await reader.getModelNames();
+console.log('Models:', models); // ['User', 'Post', 'Profile']
+
+// Get field order for a model (only database columns, not relations)
+const userFields = await reader.getModelFieldOrder('User');
+console.log('User fields:', userFields); // ['id', 'email', 'name', 'createdAt']
+```
+
+### Advanced Analysis
+
+```typescript
+// Get complete schema analysis
+const analysis = await reader.getSchemaAnalysis();
+
+console.log(`Database: ${analysis.provider}`);
+console.log(`Supported: ${analysis.isSupported}`);
+console.log(`Models found: ${analysis.models.length}`);
+
+// Analyze each model
+analysis.models.forEach(model => {
+  console.log(`\nModel: ${model.name}`);
+  model.fields.forEach(field => {
+    const tags = [];
+    if (field.isId) tags.push('ID');
+    if (field.isUnique) tags.push('UNIQUE');
+    if (field.isRelation) tags.push('RELATION');
+    
+    console.log(`  ${field.name}: ${field.type} ${tags.join(' ')}`);
+  });
+});
 ```
 
 ## 🛠️ Development
