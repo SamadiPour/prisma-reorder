@@ -11,14 +11,15 @@ Maintaining a consistent column order improves readability, schema diff clarity,
 
 1. reorder-columns (Main Command)
 
-    Analyzes the current Prisma schema and reorders the columns in each relevant table in the underlying database to match the field order in the schema file.
-    - Operates safely by creating and running ALTER TABLE ... MODIFY COLUMN ... statements for MySQL/MariaDB.
-    - Only generates the migration SQL and does not execute it automatically, allowing developers to review changes before applying.
-    - Should optionally accept specific model names to limit scope.
+   Analyzes the current Prisma schema and reorders the columns in each relevant table in the underlying database to match the field order in the schema file.
+
+   - Operates safely by creating and running ALTER TABLE ... MODIFY COLUMN ... statements for MySQL/MariaDB.
+   - Only generates the migration SQL and does not execute it automatically, allowing developers to review changes before applying.
+   - Should optionally accept specific model names to limit scope.
 
 2. check-latest-migration (Secondary Command)
 
-    Scans the latest migration SQL file (from Prisma Migrate), and if it contains any ADD COLUMN operations, the tool will:
+   Scans the latest migration SQL file (from Prisma Migrate), and if it contains any ADD COLUMN operations, the tool will:
 
    - Validate whether the added column's order matches the schema.
    - If not, it will change the query to make the column appear in the correct order.

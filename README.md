@@ -3,6 +3,7 @@
 A TypeScript-based NPM package that enhances the developer experience with Prisma ORM by enabling automatic column reordering in supported SQL databases (MySQL, MariaDB, and SQLite) to match the column order defined in the Prisma schema.
 
 ## 🎯 Features
+
 - **Column Synchronization**: Create migrations to sync database column order to match Prisma schema field order
 - **Migration Fixing**: Fix column order in migration files to respect schema field order
 - **Database Support**: Support for MySQL and MariaDB databases
@@ -27,6 +28,7 @@ yarn add prisma-reorder
 ## Basic Usage
 
 ### Sync Column Order
+
 ```bash
 npx prisma-reorder sync
 npx prisma-reorder sync --schema custom/path/schema.prisma
@@ -35,6 +37,7 @@ npx prisma-reorder sync --verbose          # Show detailed output
 ```
 
 ### Fix Migration Files
+
 ```bash
 npx prisma-reorder fix-migration                              # Check latest migration for column order issues
 npx prisma-reorder fix-migration --apply                      # Apply fixes directly to migration file
@@ -109,14 +112,14 @@ console.log(`Supported: ${analysis.isSupported}`);
 console.log(`Models found: ${analysis.models.length}`);
 
 // Analyze each model
-analysis.models.forEach(model => {
+analysis.models.forEach((model) => {
   console.log(`\nModel: ${model.name}`);
-  model.fields.forEach(field => {
+  model.fields.forEach((field) => {
     const tags = [];
     if (field.isId) tags.push('ID');
     if (field.isUnique) tags.push('UNIQUE');
     if (field.isRelation) tags.push('RELATION');
-    
+
     console.log(`  ${field.name}: ${field.type} ${tags.join(' ')}`);
   });
 });

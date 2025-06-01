@@ -10,5 +10,11 @@
     "prettier/prettier": "error",
     "no-console": "off"
   },
-  "ignorePatterns": ["dist/", "build/", "out/", "node_modules/", "jest.config.js"]
+  "ignorePatterns": [
+    "dist/",
+    "build/",
+    "out/",
+    "node_modules/",
+    "jest.config.js"
+  ]
 }
