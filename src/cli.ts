@@ -48,6 +48,7 @@ program
     './prisma/migrations',
   )
   .option('-v, --verbose', 'Show detailed output')
+  .option('-a, --apply', 'Apply fixes directly to the migration file')
   .action(async (options) => {
     const fixCommand = new FixMigrationCommand();
     await fixCommand.execute(options);

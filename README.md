@@ -36,9 +36,42 @@ npx prisma-reorder sync --verbose          # Show detailed output
 
 ### Fix Migration Files
 ```bash
-npx prisma-reorder fix-migration
-npx prisma-reorder fix-migration --migrations-dir custom/migrations
-npx prisma-reorder fix-migration --verbose
+npx prisma-reorder fix-migration                              # Check latest migration for column order issues
+npx prisma-reorder fix-migration --apply                      # Apply fixes directly to migration file
+npx prisma-reorder fix-migration --migrations-dir ./migrations # Custom migrations directory
+npx prisma-reorder fix-migration --verbose                    # Show detailed output
+```
+
+## 🔧 How it Works
+
+### Fix Migration Command Example
+
+Given this Prisma schema:
+
+```prisma
+model User {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  name      String?
+  bio       String?  // Should be positioned after 'name'
+  avatar    String?  // Should be positioned after 'bio'
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+```
+
+When you have a migration file containing:
+
+```sql
+ALTER TABLE `User` ADD COLUMN `bio` TEXT;
+ALTER TABLE `User` ADD COLUMN `avatar` VARCHAR(255);
+```
+
+Running `npx prisma-reorder fix-migration` will detect and fix the positioning:
+
+```sql
+ALTER TABLE `User` ADD COLUMN `bio` TEXT AFTER `name`;
+ALTER TABLE `User` ADD COLUMN `avatar` VARCHAR(255) AFTER `bio`;
 ```
 
 ## 📚 Programmatic API

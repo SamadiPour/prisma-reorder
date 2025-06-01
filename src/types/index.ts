@@ -81,4 +81,5 @@ export interface SyncOptions {
 export interface FixMigrationOptions {
   migrationsDir?: string;
   verbose?: boolean;
+  apply?: boolean;
 }

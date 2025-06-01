@@ -9,7 +9,7 @@ export class FixMigrationCommand {
    * Execute the fix-migration command
    */
   public async execute(options: FixMigrationOptions): Promise<void> {
-    const { migrationsDir, verbose = false } = options;
+    const { migrationsDir, verbose = false, apply = false } = options;
 
     if (verbose) {
       console.log('🔍 Checking latest migration for column order issues...');
@@ -52,6 +52,20 @@ export class FixMigrationCommand {
       console.log(result.originalSql);
       console.log('\n🔧 Fixed SQL:');
       console.log(result.fixedSql);
+
+      if (apply) {
+        console.log('\n💾 Applying fixes to migration file...');
+        const success = await fixer.applyFixes();
+        if (success) {
+          console.log('✅ Migration file has been updated successfully');
+        } else {
+          console.log('❌ Failed to apply fixes to migration file');
+        }
+      } else {
+        console.log(
+          '\n💡 To apply these fixes, run the command again with --apply flag',
+        );
+      }
     } catch (error) {
       console.error('❌ Error during migration fix operation:');
       console.error(error instanceof Error ? error.message : 'Unknown error');
