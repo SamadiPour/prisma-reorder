@@ -193,12 +193,16 @@ export class MigrationFixer {
 
       if (position === 0) {
         // First column
-        positionedSql = `ALTER TABLE \`${tableName}\`
-          ADD COLUMN \`${columnName}\` ${cleanDefinition} FIRST`;
+        // @formatter:off
+        // prettier-ignore
+        positionedSql = `ALTER TABLE \`${tableName}\` ADD COLUMN \`${columnName}\` ${cleanDefinition} FIRST`;
+        // @formatter:on
       } else if (afterColumn) {
         // After specific column
-        positionedSql = `ALTER TABLE \`${tableName}\`
-          ADD COLUMN \`${columnName}\` ${cleanDefinition} AFTER \`${afterColumn}\``;
+        // @formatter:off
+        // prettier-ignore
+        positionedSql = `ALTER TABLE \`${tableName}\` ADD COLUMN \`${columnName}\` ${cleanDefinition} AFTER \`${afterColumn}\``;
+        // @formatter:on
       } else {
         // Fallback - shouldn't happen but safety check
         continue;
@@ -262,49 +266,32 @@ export class MigrationFixer {
       endIndex: number;
     }> = [];
 
-    // Find all complete ALTER TABLE statements (including multi-line ones)
-    // Split the SQL into potential statements first
-    const statements = sql.split(';').filter((s) => s.trim());
+    // Find ALTER TABLE statements (including multi-line ones)
+    const alterTableRegex = /ALTER\s+TABLE\s+`?(\w+)`?\s+(.*?);/gis;
+    let match;
 
-    for (const statement of statements) {
-      const trimmedStatement = statement.trim();
+    while ((match = alterTableRegex.exec(sql)) !== null) {
+      const [fullMatch, tableName, alterContent] = match;
+      const startIndex = match.index;
+      const endIndex = match.index + fullMatch.length;
 
-      // Skip if this doesn't contain ALTER TABLE and ADD COLUMN
-      if (!/ALTER\s+TABLE.*ADD\s+COLUMN/i.test(trimmedStatement)) {
+      // Check if this ALTER TABLE contains ADD COLUMN statements
+      if (!/ADD\s+COLUMN/i.test(alterContent)) {
         continue;
       }
 
-      // Extract table name from the ALTER TABLE statement
-      const tableMatch = trimmedStatement.match(
-        /ALTER\s+TABLE\s+`?(\w+)`?\s+/i,
-      );
-      if (!tableMatch) continue;
+      // Parse individual ADD COLUMN statements within this ALTER TABLE
+      const addColumnMatches = this.parseAddColumns(alterContent);
 
-      const tableName = tableMatch[1];
-
-      // Find the part after "ALTER TABLE tableName "
-      const afterTable = trimmedStatement.substring(tableMatch[0].length);
-
-      // Split by commas, but be careful about commas inside quotes/parentheses
-      const addColumnParts = this.smartSplitAddColumns(afterTable);
-
-      for (const part of addColumnParts) {
-        const columnMatch = part
-          .trim()
-          .match(/ADD\s+COLUMN\s+`?(\w+)`?\s+(.+)/i);
-        if (columnMatch) {
-          const [, columnName, definition] = columnMatch;
-
-          results.push({
-            tableName,
-            columnName,
-            definition: definition.trim(),
-            fullMatch: `ALTER TABLE \`${tableName}\`
-              ADD COLUMN \`${columnName}\` ${definition.trim()}`,
-            startIndex: sql.indexOf(trimmedStatement),
-            endIndex: sql.indexOf(trimmedStatement) + trimmedStatement.length,
-          });
-        }
+      for (const addColumn of addColumnMatches) {
+        results.push({
+          tableName,
+          columnName: addColumn.columnName,
+          definition: addColumn.definition,
+          fullMatch: fullMatch,
+          startIndex: startIndex,
+          endIndex: endIndex,
+        });
       }
     }
 
@@ -312,47 +299,33 @@ export class MigrationFixer {
   }
 
   /**
-   * Smart split that respects parentheses and quotes when splitting ADD COLUMN statements
+   * Parse ADD COLUMN statements from ALTER TABLE content
    */
-  private smartSplitAddColumns(text: string): string[] {
-    const parts: string[] = [];
-    let current = '';
-    let parenDepth = 0;
-    let inQuotes = false;
-    let quoteChar = '';
+  private parseAddColumns(alterContent: string): Array<{
+    columnName: string;
+    definition: string;
+  }> {
+    const results: Array<{ columnName: string; definition: string }> = [];
 
-    for (let i = 0; i < text.length; i++) {
-      const char = text[i];
-      const prevChar = i > 0 ? text[i - 1] : '';
+    // Split by ADD COLUMN but be careful about commas and positioning clauses
+    const parts = alterContent.split(/,\s*(?=ADD\s+COLUMN)/i);
 
-      if (!inQuotes && (char === '"' || char === "'")) {
-        inQuotes = true;
-        quoteChar = char;
-      } else if (inQuotes && char === quoteChar && prevChar !== '\\') {
-        inQuotes = false;
-        quoteChar = '';
-      } else if (!inQuotes && char === '(') {
-        parenDepth++;
-      } else if (!inQuotes && char === ')') {
-        parenDepth--;
-      } else if (!inQuotes && parenDepth === 0 && char === ',') {
-        // This is a top-level comma, check if it's separating ADD COLUMN statements
-        const remaining = text.substring(i + 1).trim();
-        if (remaining.toUpperCase().startsWith('ADD COLUMN')) {
-          parts.push(current.trim());
-          current = '';
-          continue;
-        }
+    for (const part of parts) {
+      const trimmedPart = part.trim();
+      const addColumnMatch = trimmedPart.match(
+        /ADD\s+COLUMN\s+`?(\w+)`?\s+(.+?)(?=\s*(?:,\s*ADD\s+COLUMN|$))/is,
+      );
+
+      if (addColumnMatch) {
+        const [, columnName, definition] = addColumnMatch;
+        results.push({
+          columnName,
+          definition: definition.trim(),
+        });
       }
-
-      current += char;
     }
 
-    if (current.trim()) {
-      parts.push(current.trim());
-    }
-
-    return parts;
+    return results;
   }
 
   /**
