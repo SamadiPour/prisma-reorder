@@ -1,8 +1,7 @@
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'fs';
-import { join } from 'path';
+import { readFileSync, writeFileSync } from 'fs';
 import { MigrationFixer } from '../lib/migration-fixer';
 import { setupSchemaManager, TEST_SCHEMAS } from './utils/t_schema_manager';
-import { setupMigrationManager, MIGRATION_SCENARIOS } from './utils/t_migration_manager';
+import { setupMigrationManager } from './utils/t_migration_manager';
 
 describe('Migration Fixer Integration', () => {
   let schemaManager: ReturnType<typeof setupSchemaManager>;
@@ -22,10 +21,12 @@ describe('Migration Fixer Integration', () => {
   it('should fix column positions in migration file', async () => {
     // 1. Create a Prisma project structure with schema
     const schemaContent = TEST_SCHEMAS.integration;
-    const { projectDir, schemaFile, migrationsDir } = migrationManager.createPrismaProject(schemaContent);
+    const { projectDir, schemaFile, migrationsDir } =
+      migrationManager.createPrismaProject(schemaContent);
 
     // 2. Create a test migration with unpositioned columns using the migration manager
-    const migration = migrationManager.createMigrationFromTemplate('integration');
+    const migration =
+      migrationManager.createMigrationFromTemplate('integration');
 
     // 3. Run the migration fixer
     const fixer = new MigrationFixer(migrationsDir, schemaFile);

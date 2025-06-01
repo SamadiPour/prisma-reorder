@@ -56,6 +56,47 @@ ALTER TABLE \`Post\` ADD COLUMN \`testField3\` INTEGER DEFAULT 0;
 DROP INDEX \`some_index\` ON \`User\`;`,
   },
 
+  // Test extraction scenarios
+  extractColumns: {
+    name: 'extract_columns_test',
+    sql: `-- Migration: Multiple ADD COLUMN statements for extraction testing
+ALTER TABLE \`User\` ADD COLUMN \`newField\` VARCHAR(255) NOT NULL;
+ALTER TABLE posts ADD COLUMN status ENUM('draft', 'published') DEFAULT 'draft';
+ALTER TABLE \`Profile\` ADD COLUMN \`avatar\` TEXT,
+                         ADD COLUMN \`bio\` TEXT;`,
+  },
+
+  // DROP and ADD operations
+  dropAndAdd: {
+    name: 'drop_and_add_operations',
+    sql: `-- Migration: Combined DROP and ADD operations
+ALTER TABLE \`user\` DROP COLUMN \`oldField\`,
+                     ADD COLUMN \`newField\` INTEGER NULL;`,
+  },
+
+  // Complex DROP and ADD operations
+  complexDropAndAdd: {
+    name: 'complex_drop_and_add',
+    sql: `-- Migration: Complex DROP and ADD operations
+ALTER TABLE \`Profile\` DROP COLUMN \`deprecated1\`,
+                        DROP COLUMN \`deprecated2\`,
+                        ADD COLUMN \`bio\` TEXT NULL,
+                        ADD COLUMN \`avatar\` VARCHAR(255) NULL;`,
+  },
+
+  // Positioning test scenarios
+  addColumnWithCorrectPosition: {
+    name: 'add_column_correct_position',
+    sql: `-- Migration: Add column that is already in correct position
+ALTER TABLE \`User\` ADD COLUMN \`createdAt\` DATETIME NOT NULL;`,
+  },
+
+  addColumnFirstPosition: {
+    name: 'add_column_first_position',
+    sql: `-- Migration: Add column that should be first
+ALTER TABLE \`User\` ADD COLUMN \`id\` INT NOT NULL;`,
+  },
+
   // Integration test scenario
   integration: {
     name: 'integration_test',
@@ -364,5 +405,172 @@ export const MIGRATION_SCENARIOS = {
         sql: 'ALTER TABLE `users` ADD COLUMN `name` VARCHAR(100);',
       },
     ]);
+  },
+
+  /**
+   * Migration fixer test scenarios with specific schema and migration combinations
+   */
+  migrationFixerTests: {
+    /**
+     * Test scenario for single column positioning
+     */
+    singleColumnPositioning: (manager: TMigrationManager) => {
+      const schemaContent = `
+        generator client {
+          provider = "prisma-client-js"
+        }
+        
+        datasource db {
+          provider = "mysql"
+          url      = env("DATABASE_URL")
+        }
+        
+        model User {
+          id        Int      @id @default(autoincrement())
+          email     String   @unique
+          name      String?
+          newField  String?  // newField should be positioned here (after name)
+          createdAt DateTime @default(now())
+        }
+      `;
+
+      const { projectDir, schemaFile, migrationsDir } =
+        manager.createPrismaProject(schemaContent);
+
+      // @formatter:off
+      // prettier-ignore
+      const migration = manager.createMigration({
+        name: 'add_new_field',
+        sql: `ALTER TABLE \`User\` ADD COLUMN \`newField\` VARCHAR(255) NOT NULL;`,
+      });
+      // @formatter:on
+
+      return { projectDir, schemaFile, migrationsDir, migration };
+    },
+
+    /**
+     * Test scenario for column at correct position (should not change)
+     */
+    correctPosition: (manager: TMigrationManager) => {
+      const schemaContent = `
+        generator client {
+          provider = "prisma-client-js"
+        }
+        
+        datasource db {
+          provider = "mysql"
+          url      = env("DATABASE_URL")
+        }
+        
+        model User {
+          id        Int      @id @default(autoincrement())
+          email     String   @unique
+          createdAt DateTime @default(now())  // createdAt should be last
+        }
+      `;
+
+      const { projectDir, schemaFile, migrationsDir } =
+        manager.createPrismaProject(schemaContent);
+
+      const migration = manager.createMigrationFromTemplate(
+        'addColumnWithCorrectPosition',
+      );
+
+      return { projectDir, schemaFile, migrationsDir, migration };
+    },
+
+    /**
+     * Test scenario for FIRST positioning
+     */
+    firstPosition: (manager: TMigrationManager) => {
+      const schemaContent = `
+        generator client {
+          provider = "prisma-client-js"
+        }
+        
+        datasource db {
+          provider = "mysql"
+          url      = env("DATABASE_URL")
+        }
+        
+        model User {
+          id        Int      @id @default(autoincrement())  // id should be first
+          email     String   @unique
+          name      String?
+        }
+      `;
+
+      const { projectDir, schemaFile, migrationsDir } =
+        manager.createPrismaProject(schemaContent);
+
+      const migration = manager.createMigrationFromTemplate(
+        'addColumnFirstPosition',
+      );
+
+      return { projectDir, schemaFile, migrationsDir, migration };
+    },
+
+    /**
+     * Test scenario for DROP and ADD operations
+     */
+    dropAndAdd: (manager: TMigrationManager) => {
+      const schemaContent = `
+        generator client {
+          provider = "prisma-client-js"
+        }
+        
+        datasource db {
+          provider = "mysql"
+          url      = env("DATABASE_URL")
+        }
+        
+        model user {
+          id        Int      @id @default(autoincrement())
+          email     String   @unique
+          newField  String?  // newField should be positioned here (after email)
+          name      String?
+          createdAt DateTime @default(now())
+        }
+      `;
+
+      const { projectDir, schemaFile, migrationsDir } =
+        manager.createPrismaProject(schemaContent);
+
+      const migration = manager.createMigrationFromTemplate('dropAndAdd');
+
+      return { projectDir, schemaFile, migrationsDir, migration };
+    },
+
+    /**
+     * Test scenario for complex DROP and ADD operations
+     */
+    complexDropAndAdd: (manager: TMigrationManager) => {
+      const schemaContent = `
+        generator client {
+          provider = "prisma-client-js"
+        }
+        
+        datasource db {
+          provider = "mysql"
+          url      = env("DATABASE_URL")
+        }
+        
+        model Profile {
+          id        Int      @id @default(autoincrement())
+          userId    Int      @unique
+          avatar    String?  // avatar should be positioned here (after userId)
+          bio       String?  // bio should be positioned here (after avatar)
+          updatedAt DateTime @updatedAt
+        }
+      `;
+
+      const { projectDir, schemaFile, migrationsDir } =
+        manager.createPrismaProject(schemaContent);
+
+      const migration =
+        manager.createMigrationFromTemplate('complexDropAndAdd');
+
+      return { projectDir, schemaFile, migrationsDir, migration };
+    },
   },
 } as const;
