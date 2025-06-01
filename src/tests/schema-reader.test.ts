@@ -1,5 +1,5 @@
 import { SchemaReader } from '../lib/schema-reader';
-import { setupSchemaManager } from './test-schemas';
+import { setupSchemaManager } from './utils/t_schema_manager';
 
 describe('SchemaReader', () => {
   let schemaManager: ReturnType<typeof setupSchemaManager>;

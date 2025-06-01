@@ -157,7 +157,7 @@ model Post {
  * Utility class for managing temporary test schema files.
  * Creates schema files in a temporary directory and provides cleanup.
  */
-export class SchemaManager {
+export class TSchemaManager {
   private readonly tempDir: string;
   private createdFiles: string[] = [];
 
@@ -249,6 +249,6 @@ export class SchemaManager {
  * Helper function to create a test schema manager for Jest tests.
  * Returns a manager instance - you should call cleanup manually or use beforeEach/afterEach.
  */
-export function setupSchemaManager(testName?: string): SchemaManager {
-  return new SchemaManager(testName);
+export function setupSchemaManager(testName?: string): TSchemaManager {
+  return new TSchemaManager(testName);
 }

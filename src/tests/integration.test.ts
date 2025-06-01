@@ -1,49 +1,34 @@
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'fs';
 import { join } from 'path';
 import { MigrationFixer } from '../lib/migration-fixer';
-import { setupSchemaManager, TEST_SCHEMAS } from './test-schemas';
+import { setupSchemaManager, TEST_SCHEMAS } from './utils/t_schema_manager';
+import { setupMigrationManager, MIGRATION_SCENARIOS } from './utils/t_migration_manager';
 
 describe('Migration Fixer Integration', () => {
   let schemaManager: ReturnType<typeof setupSchemaManager>;
-  const testDir = join(__dirname, './migration-fix');
-  const migrationsDir = join(testDir, 'prisma/migrations/202310010000_initial');
-  const migrationFile = join(migrationsDir, 'migration.sql');
-  const schemaFile = join(testDir, 'prisma/schema.prisma');
+  let migrationManager: ReturnType<typeof setupMigrationManager>;
 
   beforeEach(() => {
     schemaManager = setupSchemaManager('integration');
-    // Create test directories
-    mkdirSync(migrationsDir, { recursive: true });
-    mkdirSync(join(testDir, 'prisma'), { recursive: true });
+    migrationManager = setupMigrationManager('integration');
   });
 
   afterEach(() => {
-    // Cleanup test schemas
+    // Cleanup test schemas and migrations
     schemaManager.cleanup();
-    // Cleanup - remove any created directories and files
-    if (existsSync(testDir)) {
-      rmSync(testDir, { recursive: true, force: true });
-    }
+    migrationManager.cleanup();
   });
 
   it('should fix column positions in migration file', async () => {
-    // 1. Create a test migration with unpositioned columns
-    const originalSql = `-- Test migration for integration test
-ALTER TABLE \`User\` ADD COLUMN \`testField1\` VARCHAR(100);
-ALTER TABLE \`User\` ADD COLUMN \`testField2\` TEXT;
-ALTER TABLE \`Post\` ADD COLUMN \`testField3\` INTEGER DEFAULT 0;`;
+    // 1. Create a Prisma project structure with schema
+    const schemaContent = TEST_SCHEMAS.integration;
+    const { projectDir, schemaFile, migrationsDir } = migrationManager.createPrismaProject(schemaContent);
 
-    writeFileSync(migrationFile, originalSql);
-
-    // 2. Update schema to include test fields in specific positions
-    const testSchema = TEST_SCHEMAS.integration;
-    writeFileSync(schemaFile, testSchema);
+    // 2. Create a test migration with unpositioned columns using the migration manager
+    const migration = migrationManager.createMigrationFromTemplate('integration');
 
     // 3. Run the migration fixer
-    const fixer = new MigrationFixer(
-      join(testDir, 'prisma/migrations'),
-      schemaFile,
-    );
+    const fixer = new MigrationFixer(migrationsDir, schemaFile);
 
     const fixResult = await fixer.fixLatestMigration();
     expect(fixResult).toBeTruthy();
@@ -51,11 +36,11 @@ ALTER TABLE \`Post\` ADD COLUMN \`testField3\` INTEGER DEFAULT 0;`;
 
     // Write the fixed SQL back to the migration file
     if (fixResult?.fixedSql) {
-      writeFileSync(migrationFile, fixResult.fixedSql);
+      writeFileSync(migration.migrationFile, fixResult.fixedSql);
     }
 
     // 4. Verify the migration was fixed
-    const fixedSql = readFileSync(migrationFile, 'utf-8');
+    const fixedSql = readFileSync(migration.migrationFile, 'utf-8');
     const expectedPositioning = [
       'AFTER `id`',
       'AFTER `name`',
