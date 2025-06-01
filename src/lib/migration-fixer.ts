@@ -125,100 +125,110 @@ export class MigrationFixer {
       return null; // No ADD COLUMN statements found
     }
 
-    // Process statements in reverse order to avoid index issues when replacing
-    const sortedStatements = addColumnStatements.sort(
-      (a, b) => b.startIndex - a.startIndex,
-    );
-
-    for (const statement of sortedStatements) {
-      const { tableName, columnName, definition, fullMatch } = statement;
-
-      // Validate column exists in schema and get its position
-      const validation = await this.validateColumn(tableName, columnName);
-
-      if (!validation.exists) {
-        continue; // Column not found in schema, skip
+    // Group statements by ALTER TABLE (same fullMatch)
+    const alterTableGroups = new Map<string, typeof addColumnStatements>();
+    for (const statement of addColumnStatements) {
+      const key = statement.fullMatch;
+      if (!alterTableGroups.has(key)) {
+        alterTableGroups.set(key, []);
       }
+      alterTableGroups.get(key)!.push(statement);
+    }
 
-      const { position, afterColumn } = validation;
+    // Process each ALTER TABLE statement
+    for (const [originalAlterTable, statements] of alterTableGroups) {
+      let modifiedAlterTable = originalAlterTable;
+      const alterTableChanges: string[] = [];
 
-      // Check if this column is already at the end (last position)
-      // If so, no positioning is needed unless there's already positioning
-      const model = analysis.models.find(
-        (m) => m.name.toLowerCase() === tableName.toLowerCase(),
-      );
+      for (const statement of statements) {
+        const { tableName, columnName, definition } = statement;
 
-      if (!model) continue;
+        // Validate column exists in schema and get its position
+        const validation = await this.validateColumn(tableName, columnName);
 
-      const totalNonRelationFields = model.fields.filter(
-        (field) => !field.isRelation,
-      ).length;
-      const isLastColumn = position === totalNonRelationFields - 1;
+        if (!validation.exists) {
+          continue; // Column not found in schema, skip
+        }
 
-      // Check if the ADD COLUMN already has FIRST or AFTER clause
-      const hasPositioning = /\s+(FIRST|AFTER\s+`?\w+`?)\s*$/i.test(definition);
+        const { position, afterColumn } = validation;
 
-      if (isLastColumn && !hasPositioning) {
-        // Column is supposed to be at the end and has no positioning clause
-        // This is fine, MySQL will add it at the end by default
-        continue;
-      }
-
-      // If the column already has the correct positioning, skip it
-      if (hasPositioning) {
-        const expectedPosition =
-          position === 0 ? 'FIRST' : `AFTER \`${afterColumn}\``;
-        const currentPositionMatch = definition.match(
-          /\s+(FIRST|AFTER\s+`?(\w+)`?)\s*$/i,
+        // Check if this column is already at the end (last position)
+        const model = analysis.models.find(
+          (m) => m.name.toLowerCase() === tableName.toLowerCase(),
         );
 
-        if (currentPositionMatch) {
-          const currentPosition = currentPositionMatch[1].trim();
-          const normalizedCurrent = currentPosition.toUpperCase();
-          const normalizedExpected = expectedPosition.toUpperCase();
+        if (!model) continue;
 
-          if (normalizedCurrent === normalizedExpected) {
-            continue; // Already correctly positioned
+        const totalNonRelationFields = model.fields.filter(
+          (field) => !field.isRelation,
+        ).length;
+        const isLastColumn = position === totalNonRelationFields - 1;
+
+        // Check if the ADD COLUMN already has FIRST or AFTER clause
+        const hasPositioning = /\s+(FIRST|AFTER\s+`?\w+`?)\s*$/i.test(
+          definition,
+        );
+
+        if (isLastColumn && !hasPositioning) {
+          // Column is supposed to be at the end and has no positioning clause
+          // This is fine, MySQL will add it at the end by default
+          continue;
+        }
+
+        // If the column already has the correct positioning, skip it
+        if (hasPositioning) {
+          const expectedPosition =
+            position === 0 ? 'FIRST' : `AFTER \`${afterColumn}\``;
+          const currentPositionMatch = definition.match(
+            /\s+(FIRST|AFTER\s+`?(\w+)`?)\s*$/i,
+          );
+
+          if (currentPositionMatch) {
+            const currentPosition = currentPositionMatch[1].trim();
+            const normalizedCurrent = currentPosition.toUpperCase();
+            const normalizedExpected = expectedPosition.toUpperCase();
+
+            if (normalizedCurrent === normalizedExpected) {
+              continue; // Already correctly positioned
+            }
           }
         }
+
+        // Remove any existing positioning from the definition
+        const cleanDefinition = definition
+          .replace(/\s+(FIRST|AFTER\s+`?\w+`?)\s*$/i, '')
+          .trim();
+
+        // Generate the positioning clause
+        let positioningClause = '';
+        if (position === 0) {
+          positioningClause = ' FIRST';
+        } else if (afterColumn) {
+          positioningClause = ` AFTER \`${afterColumn}\``;
+        }
+
+        // Create the search pattern for the original ADD COLUMN clause
+        const originalAddColumn = `ADD COLUMN \`${columnName}\` ${definition}`;
+        const newAddColumn = `ADD COLUMN \`${columnName}\` ${cleanDefinition}${positioningClause}`;
+
+        // Replace the specific ADD COLUMN clause in the ALTER TABLE statement
+        modifiedAlterTable = modifiedAlterTable.replace(
+          originalAddColumn,
+          newAddColumn,
+        );
+
+        const positionDesc =
+          position === 0 ? 'FIRST' : `AFTER \`${afterColumn}\``;
+        alterTableChanges.push(
+          `Fixed column position for ${tableName}.${columnName} (${positionDesc})`,
+        );
       }
 
-      // Remove any existing positioning from the definition
-      const cleanDefinition = definition
-        .replace(/\s+(FIRST|AFTER\s+`?\w+`?)\s*$/i, '')
-        .trim();
-
-      // Generate positioned ADD COLUMN statement
-      let positionedSql: string;
-
-      if (position === 0) {
-        // First column
-        // @formatter:off
-        // prettier-ignore
-        positionedSql = `ALTER TABLE \`${tableName}\` ADD COLUMN \`${columnName}\` ${cleanDefinition} FIRST`;
-        // @formatter:on
-      } else if (afterColumn) {
-        // After specific column
-        // @formatter:off
-        // prettier-ignore
-        positionedSql = `ALTER TABLE \`${tableName}\` ADD COLUMN \`${columnName}\` ${cleanDefinition} AFTER \`${afterColumn}\``;
-        // @formatter:on
-      } else {
-        // Fallback - shouldn't happen but safety check
-        continue;
+      // Replace the original ALTER TABLE statement with the modified one
+      if (alterTableChanges.length > 0) {
+        fixedSql = fixedSql.replace(originalAlterTable, modifiedAlterTable);
+        changes.push(...alterTableChanges);
       }
-
-      // Preserve the ending (semicolon or comma)
-      const ending = fullMatch.match(/[,;]\s*$/)?.[0] || '';
-
-      // Replace in the SQL
-      fixedSql = fixedSql.replace(fullMatch, positionedSql + ending);
-
-      const positionDesc =
-        position === 0 ? 'FIRST' : `AFTER \`${afterColumn}\``;
-      changes.push(
-        `Fixed column position for ${tableName}.${columnName} (${positionDesc})`,
-      );
     }
 
     return changes.length > 0 ? { sql: fixedSql, changes } : null;

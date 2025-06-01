@@ -151,5 +151,101 @@ describe('MigrationFixer', () => {
       expect(result.sql).toContain('FIRST');
       expect(result.changes[0]).toMatch(/FIRST/);
     });
+
+    it('should handle ALTER TABLE with both DROP and ADD operations', async () => {
+      // @formatter:off
+      // prettier-ignore
+      const sql = `ALTER TABLE \`user\` DROP COLUMN \`oldField\`,
+                                     ADD COLUMN \`newField\` INTEGER NULL;`;
+      // @formatter:on
+
+      const fixer = new MigrationFixer();
+      const analysis = {
+        isSupported: true,
+        provider: 'mysql',
+        models: [
+          {
+            name: 'user',
+            fields: [
+              { name: 'id', isRelation: false },
+              { name: 'email', isRelation: false },
+              { name: 'newField', isRelation: false }, // newField should be positioned here
+              { name: 'name', isRelation: false },
+              { name: 'createdAt', isRelation: false },
+            ],
+          },
+        ],
+      };
+
+      // newField should be after 'email' (index 2)
+      const validateMap = {
+        'user.newField': { exists: true, position: 2, afterColumn: 'email' },
+      };
+
+      mockSchemaReader(fixer as any, analysis, validateMap);
+      const result = await (fixer as any).fixMigrationSql(sql);
+
+      expect(result).not.toBeNull();
+      expect(result.sql).toContain('AFTER `email`');
+      expect(result.sql).toContain('DROP COLUMN `oldField`');
+      expect(result.sql).toContain(
+        'ADD COLUMN `newField` INTEGER NULL AFTER `email`',
+      );
+      expect(result.changes[0]).toMatch(
+        /Fixed column position for user\.newField \(AFTER `email`\)/,
+      );
+    });
+
+    it('should handle complex ALTER TABLE with multiple DROP and ADD operations', async () => {
+      // @formatter:off
+      // prettier-ignore
+      const sql = `ALTER TABLE \`Profile\` DROP COLUMN \`deprecated1\`,
+                                        DROP COLUMN \`deprecated2\`,
+                                        ADD COLUMN \`bio\` TEXT NULL,
+                                        ADD COLUMN \`avatar\` VARCHAR(255) NULL;`;
+      // @formatter:on
+
+      const fixer = new MigrationFixer();
+      const analysis = {
+        isSupported: true,
+        provider: 'mysql',
+        models: [
+          {
+            name: 'Profile',
+            fields: [
+              { name: 'id', isRelation: false },
+              { name: 'userId', isRelation: false },
+              { name: 'avatar', isRelation: false }, // avatar should be first
+              { name: 'bio', isRelation: false }, // bio should be after avatar
+              { name: 'updatedAt', isRelation: false },
+            ],
+          },
+        ],
+      };
+
+      // avatar should be after 'userId' (index 2), bio should be after 'avatar' (index 3)
+      const validateMap = {
+        'Profile.avatar': { exists: true, position: 2, afterColumn: 'userId' },
+        'Profile.bio': { exists: true, position: 3, afterColumn: 'avatar' },
+      };
+
+      mockSchemaReader(fixer as any, analysis, validateMap);
+      const result = await(fixer as any).fixMigrationSql(sql);
+
+      expect(result).not.toBeNull();
+      expect(result.sql).toContain('ADD COLUMN `bio` TEXT NULL AFTER `avatar`');
+      expect(result.sql).toContain(
+        'ADD COLUMN `avatar` VARCHAR(255) NULL AFTER `userId`',
+      );
+      expect(result.sql).toContain('DROP COLUMN `deprecated1`');
+      expect(result.sql).toContain('DROP COLUMN `deprecated2`');
+      expect(result.changes).toHaveLength(2);
+      expect(result.changes).toContain(
+        'Fixed column position for Profile.avatar (AFTER `userId`)',
+      );
+      expect(result.changes).toContain(
+        'Fixed column position for Profile.bio (AFTER `avatar`)',
+      );
+    });
   });
 });
