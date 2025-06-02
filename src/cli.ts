@@ -3,7 +3,7 @@
 import { Command } from 'commander';
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { SyncCommand, FixMigrationCommand } from './commands';
+import { FixMigrationCommand, SyncCommand } from './commands';
 
 const packageJson = JSON.parse(
   readFileSync(join(__dirname, '../package.json'), 'utf-8'),

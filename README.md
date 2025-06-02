@@ -1,6 +1,8 @@
 # Prisma Column Order Manager
 
-A TypeScript-based NPM package that enhances the developer experience with Prisma ORM by enabling automatic column reordering in supported SQL databases (MySQL, MariaDB, and SQLite) to match the column order defined in the Prisma schema.
+A TypeScript-based NPM package that enhances the developer experience with Prisma ORM by enabling automatic column
+reordering in supported SQL databases (MySQL, MariaDB, and SQLite) to match the column order defined in the Prisma
+schema.
 
 ## 🎯 Features
 
@@ -25,9 +27,11 @@ yarn add prisma-reorder
 ❌ **PostgreSQL** - Not supported (limitations in column reordering)  
 ❌ **SQL Server** - Not supported (limitations in column reordering)
 
-## Basic Usage
+## 📋 Commands
 
-### Sync Column Order
+### 1. `sync` - Reorder Database Columns
+
+The main command that analyzes your Prisma schema and reorders database columns to match the field order.
 
 ```bash
 npx prisma-reorder sync
@@ -36,7 +40,16 @@ npx prisma-reorder sync --model User Post  # Sync specific models
 npx prisma-reorder sync --verbose          # Show detailed output
 ```
 
-### Fix Migration Files
+**How it works:**
+
+1. Connects to your database using Prisma
+2. Fetches actual column metadata and order from database tables
+3. Compares with the field order in your Prisma schema
+4. Generates `ALTER TABLE` statements with complete column definitions
+
+### 2. `fix-migration` - Fix Migration Files
+
+Analyzes migration files and fixes column order issues in ADD COLUMN statements.
 
 ```bash
 npx prisma-reorder fix-migration                              # Check latest migration for column order issues
@@ -45,9 +58,7 @@ npx prisma-reorder fix-migration --migrations-dir ./migrations # Custom migratio
 npx prisma-reorder fix-migration --verbose                    # Show detailed output
 ```
 
-## 🔧 How it Works
-
-### Fix Migration Command Example
+**How it works:**
 
 Given this Prisma schema:
 
@@ -66,15 +77,19 @@ model User {
 When you have a migration file containing:
 
 ```sql
-ALTER TABLE `User` ADD COLUMN `bio` TEXT;
-ALTER TABLE `User` ADD COLUMN `avatar` VARCHAR(255);
+ALTER TABLE `User`
+    ADD COLUMN `bio` TEXT;
+ALTER TABLE `User`
+    ADD COLUMN `avatar` VARCHAR(255);
 ```
 
 Running `npx prisma-reorder fix-migration` will detect and fix the positioning:
 
 ```sql
-ALTER TABLE `User` ADD COLUMN `bio` TEXT AFTER `name`;
-ALTER TABLE `User` ADD COLUMN `avatar` VARCHAR(255) AFTER `bio`;
+ALTER TABLE `User`
+    ADD COLUMN `bio` TEXT AFTER `name`;
+ALTER TABLE `User`
+    ADD COLUMN `avatar` VARCHAR(255) AFTER `bio`;
 ```
 
 ## 📚 Programmatic API

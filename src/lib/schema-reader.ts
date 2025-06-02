@@ -2,11 +2,11 @@ import { getSchema } from '@mrleebo/prisma-ast';
 import { readFileSync } from 'fs';
 import { join, resolve } from 'path';
 import {
-  SUPPORTED_PROVIDERS,
-  type SupportedProvider,
   type PrismaField,
   type PrismaModel,
   type SchemaAnalysis,
+  SUPPORTED_PROVIDERS,
+  type SupportedProvider,
 } from '../types';
 
 // Re-export for convenience
@@ -245,5 +245,96 @@ export class SchemaReader {
    */
   public async getSchemaAnalysis(): Promise<SchemaAnalysis> {
     return this.analyzeSchema();
+  }
+
+  /**
+   * Get the actual table name for a model (considering @@map directive)
+   */
+  public async getTableName(modelName: string): Promise<string> {
+    try {
+      const absolutePath = resolve(this.schemaPath);
+      const schemaContent = readFileSync(absolutePath, 'utf-8');
+      const schema = getSchema(schemaContent);
+
+      const model = schema.list.find(
+        (item) => item.type === 'model' && item.name === modelName,
+      ) as any;
+
+      if (!model) {
+        throw new Error(`Model "${modelName}" not found in schema`);
+      }
+
+      // Look for @@map attribute
+      if (model.properties) {
+        for (const property of model.properties) {
+          if (property.type === 'blockAttribute' && property.name === 'map') {
+            // Extract the table name from @@map("table_name")
+            if (property.args && property.args.length > 0) {
+              const mapValue = property.args[0];
+              if (typeof mapValue === 'string') {
+                return mapValue.replace(/"/g, ''); // Remove quotes
+              }
+            }
+          }
+        }
+      }
+
+      // If no @@map found, return the model name
+      return modelName;
+    } catch (error) {
+      // If we can't read the schema, fall back to model name
+      return modelName;
+    }
+  }
+
+  /**
+   * Get field to column name mapping for a model (considering @map directives)
+   */
+  public async getFieldColumnMapping(
+    modelName: string,
+  ): Promise<Map<string, string>> {
+    const mapping = new Map<string, string>();
+
+    try {
+      const absolutePath = resolve(this.schemaPath);
+      const schemaContent = readFileSync(absolutePath, 'utf-8');
+      const schema = getSchema(schemaContent);
+
+      const model = schema.list.find(
+        (item) => item.type === 'model' && item.name === modelName,
+      ) as any;
+
+      if (!model || !model.properties) {
+        return mapping;
+      }
+
+      for (const property of model.properties) {
+        if (property.type === 'field') {
+          const fieldName = property.name;
+          let columnName = fieldName; // Default to field name
+
+          // Look for @map attribute on the field
+          if (property.attributes) {
+            for (const attr of property.attributes) {
+              if (attr.name === 'map') {
+                if (attr.args && attr.args.length > 0) {
+                  const mapValue = attr.args[0];
+                  if (typeof mapValue === 'string') {
+                    columnName = mapValue.replace(/"/g, ''); // Remove quotes
+                  }
+                }
+                break;
+              }
+            }
+          }
+
+          mapping.set(fieldName, columnName);
+        }
+      }
+    } catch (error) {
+      // If we can't read the schema, return empty mapping (will fall back to field names)
+    }
+
+    return mapping;
   }
 }

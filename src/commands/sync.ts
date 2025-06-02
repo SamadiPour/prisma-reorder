@@ -1,5 +1,6 @@
 import { ColumnReorderGenerator } from '../lib/column-reorder';
 import { SchemaReader } from '../lib/schema-reader';
+import { DatabaseConnector } from '../lib/database-connector';
 import { type SyncOptions } from '../types';
 
 /**
@@ -46,8 +47,34 @@ export class SyncCommand {
         );
       }
 
+      // Test database connection before proceeding
+      if (verbose) {
+        console.log('🔗 Testing database connection...');
+      }
+
+      const tempConnector = new DatabaseConnector(validation.provider as any);
+      const connectionTest = await tempConnector.testConnection();
+
+      if (!connectionTest.success) {
+        console.error('❌ Failed to connect to database');
+        console.error(`   Error: ${connectionTest.error}`);
+        console.error('   Please check your DATABASE_URL in .env file');
+        process.exit(1);
+      }
+
+      await tempConnector.disconnect();
+
+      if (verbose) {
+        console.log('✅ Database connection successful');
+      }
+
       // Generate reorder SQL
       const generator = new ColumnReorderGenerator(schemaPath);
+
+      if (verbose) {
+        console.log('🔍 Analyzing schema and database...');
+      }
+
       const results = await generator.generateReorderSQL(targetModels);
 
       if (results.length === 0) {
@@ -77,6 +104,11 @@ export class SyncCommand {
         });
         console.log();
       }
+
+      console.log('\n✅ Column reorder SQL statements generated successfully!');
+      console.log(
+        '💡 Review the SQL statements above and execute them manually in your database.',
+      );
     } catch (error) {
       console.error('❌ Error during sync operation:');
       console.error(error instanceof Error ? error.message : 'Unknown error');

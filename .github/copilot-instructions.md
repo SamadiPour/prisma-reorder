@@ -16,6 +16,7 @@ Maintaining a consistent column order improves readability, schema diff clarity,
    - Operates safely by creating and running ALTER TABLE ... MODIFY COLUMN ... statements for MySQL/MariaDB.
    - Only generates the migration SQL and does not execute it automatically, allowing developers to review changes before applying.
    - Should optionally accept specific model names to limit scope.
+   - There won't be any execution of migration from this tool; it only generates the SQL statements.
 
 2. check-latest-migration (Secondary Command)
 
