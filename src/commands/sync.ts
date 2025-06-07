@@ -52,7 +52,31 @@ export class SyncCommand {
         console.log('🔗 Testing database connection...');
       }
 
-      const tempConnector = new DatabaseConnector(validation.provider as any);
+      // Get database URL from schema
+      let databaseUrl: string;
+      try {
+        databaseUrl = await schemaReader.getDatabaseUrl();
+
+        if (verbose) {
+          console.log('📄 Database URL extracted from schema');
+        }
+      } catch (error) {
+        console.error('❌ Failed to extract database URL from schema');
+        console.error(
+          `   Error: ${
+            error instanceof Error ? error.message : 'Unknown error'
+          }`,
+        );
+        console.error(
+          '   Please check your schema.prisma datasource configuration',
+        );
+        process.exit(1);
+      }
+
+      const tempConnector = new DatabaseConnector(
+        validation.provider as any,
+        databaseUrl,
+      );
       const connectionTest = await tempConnector.testConnection();
 
       if (!connectionTest.success) {

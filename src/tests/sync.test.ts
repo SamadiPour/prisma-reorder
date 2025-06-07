@@ -1,6 +1,7 @@
 import { SyncCommand } from '../commands/sync';
 import { ColumnReorderGenerator } from '../lib/column-reorder';
 import { DatabaseConnector } from '../lib/database-connector';
+import { SchemaReader } from '../lib/schema-reader';
 import { setupSchemaManager } from './utils/t_schema_manager';
 import { type SyncOptions } from '../types';
 
@@ -29,6 +30,11 @@ describe('SyncCommand', () => {
     jest.spyOn(process, 'exit').mockImplementation((code?: number) => {
       throw new Error(`Process.exit called with code ${code}`);
     });
+
+    // Mock SchemaReader getDatabaseUrl method
+    jest
+      .spyOn(SchemaReader.prototype, 'getDatabaseUrl')
+      .mockResolvedValue('mysql://test:test@localhost:3306/testdb');
 
     // Mock DatabaseConnector methods
     jest
@@ -258,10 +264,16 @@ describe('ColumnReorderGenerator', () => {
 
   beforeEach(() => {
     schemaManager = setupSchemaManager('column-reorder');
+
+    // Mock SchemaReader getDatabaseUrl method for ColumnReorderGenerator tests
+    jest
+      .spyOn(SchemaReader.prototype, 'getDatabaseUrl')
+      .mockResolvedValue('mysql://test:test@localhost:3306/testdb');
   });
 
   afterEach(() => {
     schemaManager.cleanup();
+    jest.restoreAllMocks();
   });
 
   describe('initialization', () => {

@@ -31,9 +31,21 @@ export class DatabaseConnector {
   private prisma: PrismaClient;
   private provider: SupportedProvider;
 
-  constructor(provider: SupportedProvider) {
+  constructor(provider: SupportedProvider, databaseUrl?: string) {
     this.provider = provider;
-    this.prisma = new PrismaClient();
+
+    // Create PrismaClient with custom database URL if provided
+    if (databaseUrl) {
+      this.prisma = new PrismaClient({
+        datasources: {
+          db: {
+            url: databaseUrl,
+          },
+        },
+      });
+    } else {
+      this.prisma = new PrismaClient();
+    }
   }
 
   /**

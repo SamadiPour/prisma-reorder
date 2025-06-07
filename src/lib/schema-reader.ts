@@ -8,6 +8,7 @@ import {
   SUPPORTED_PROVIDERS,
   type SupportedProvider,
 } from '../types';
+import { ConfigReader } from './config-reader';
 
 // Re-export for convenience
 export { SUPPORTED_PROVIDERS } from '../types';
@@ -336,5 +337,127 @@ export class SchemaReader {
     }
 
     return mapping;
+  }
+
+  /**
+   * Extract database URL from schema datasource
+   */
+  public async getDatabaseUrl(): Promise<string> {
+    try {
+      const absolutePath = resolve(this.schemaPath);
+      const schemaContent = readFileSync(absolutePath, 'utf-8');
+      const schema = getSchema(schemaContent);
+
+      // Find datasource
+      const datasource = schema.list.find((item) => item.type === 'datasource');
+      if (!datasource) {
+        throw new Error('No datasource found in schema');
+      }
+
+      // Extract url property
+      const urlProperty = datasource.assignments?.find(
+        (assignment) =>
+          assignment.type === 'assignment' && assignment.key === 'url',
+      );
+
+      if (
+        !urlProperty ||
+        urlProperty.type !== 'assignment' ||
+        !urlProperty.value
+      ) {
+        throw new Error('No url specified in datasource');
+      }
+
+      // Handle different types of values from the AST
+      let urlValue: string;
+      let envVarName: string | null = null;
+
+      if (typeof urlProperty.value === 'string') {
+        // Plain string URL
+        urlValue = urlProperty.value.replace(/"/g, '');
+      } else if (
+        typeof urlProperty.value === 'object' &&
+        urlProperty.value !== null
+      ) {
+        const valueObj = urlProperty.value as any;
+        if (valueObj.type === 'function' && valueObj.name === 'env') {
+          // env() function call
+          if (valueObj.params && valueObj.params.length > 0) {
+            envVarName = valueObj.params[0].replace(/"/g, ''); // Remove quotes from parameter
+            urlValue = `env("${envVarName}")`;
+          } else {
+            throw new Error('env() function missing parameter');
+          }
+        } else {
+          // Try to convert to string as fallback
+          urlValue = String(urlProperty.value).replace(/"/g, '');
+        }
+      } else {
+        // Convert to string as fallback
+        urlValue = String(urlProperty.value).replace(/"/g, '');
+      }
+
+      // If we already extracted the env var name from the function object, use it
+      if (envVarName) {
+        // Try to load from .env file using ConfigReader
+        try {
+          const configReader = new ConfigReader();
+          const envValue = configReader.get(envVarName);
+
+          if (!envValue) {
+            throw new Error(
+              `Environment variable "${envVarName}" not found in .env file or environment`,
+            );
+          }
+
+          return envValue;
+        } catch (configError) {
+          // If .env file loading fails, try process.env as fallback
+          const envValue = process.env[envVarName];
+          if (!envValue) {
+            throw new Error(`Environment variable "${envVarName}" not found`);
+          }
+          return envValue;
+        }
+      } else {
+        // Check if it's an environment variable reference using regex (fallback)
+        const envMatch = urlValue.match(/env\("([^"]+)"\)/);
+        if (envMatch) {
+          const envVarNameFromRegex = envMatch[1];
+
+          // Try to load from .env file using ConfigReader
+          try {
+            const configReader = new ConfigReader();
+            const envValue = configReader.get(envVarNameFromRegex);
+
+            if (!envValue) {
+              throw new Error(
+                `Environment variable "${envVarNameFromRegex}" not found in .env file or environment`,
+              );
+            }
+
+            return envValue;
+          } catch (configError) {
+            // If .env file loading fails, try process.env as fallback
+            const envValue = process.env[envVarNameFromRegex];
+            if (!envValue) {
+              throw new Error(
+                `Environment variable "${envVarNameFromRegex}" not found`,
+              );
+            }
+            return envValue;
+          }
+        } else {
+          // It's a plain string, remove quotes if present
+          return urlValue;
+        }
+      }
+    } catch (error) {
+      throw new Error(
+        `Failed to extract database URL from schema: ${
+          error instanceof Error ? error.message : 'Unknown error'
+        }`,
+      );
+    }
   }
 }

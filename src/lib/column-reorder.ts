@@ -33,8 +33,11 @@ export class ColumnReorderGenerator {
 
     const provider = analysis.provider as SupportedProvider;
 
-    // Initialize database connector
-    this.dbConnector = new DatabaseConnector(provider);
+    // Get database URL from schema
+    const databaseUrl = await this.schemaReader.getDatabaseUrl();
+
+    // Initialize database connector with the extracted URL
+    this.dbConnector = new DatabaseConnector(provider, databaseUrl);
 
     try {
       await this.dbConnector.connect();

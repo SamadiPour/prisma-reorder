@@ -34,6 +34,11 @@ describe('Integration Tests', () => {
       throw new Error(`Process.exit called with code ${code}`);
     });
 
+    // Mock SchemaReader getDatabaseUrl method
+    jest
+      .spyOn(SchemaReader.prototype, 'getDatabaseUrl')
+      .mockResolvedValue('mysql://test:test@localhost:3306/testdb');
+
     // Mock DatabaseConnector methods for integration tests
     jest.spyOn(DatabaseConnector.prototype, 'connect').mockResolvedValue();
     jest.spyOn(DatabaseConnector.prototype, 'disconnect').mockResolvedValue();

@@ -88,4 +88,140 @@ describe('SchemaReader', () => {
       schemaReader.getModelFieldOrder('NonExistentModel'),
     ).rejects.toThrow();
   });
+
+  describe('Database URL extraction', () => {
+    it('should extract database URL from env variable', async () => {
+      // Create a schema with env variable
+      const schemaContent = `
+        generator client {
+          provider = "prisma-client-js"
+        }
+
+        datasource db {
+          provider = "mysql"
+          url      = env("DATABASE_URL")
+        }
+
+        model User {
+          id   Int    @id @default(autoincrement())
+          name String
+        }
+      `;
+
+      const schemaPath = schemaManager.createCustomSchemaFile(schemaContent);
+
+      // Mock environment variable
+      const originalEnv = process.env.DATABASE_URL;
+      process.env.DATABASE_URL = 'mysql://user:pass@localhost:3306/testdb';
+
+      try {
+        const schemaReader = new SchemaReader(schemaPath);
+        const databaseUrl = await schemaReader.getDatabaseUrl();
+        expect(databaseUrl).toBe('mysql://user:pass@localhost:3306/testdb');
+      } finally {
+        // Restore original environment
+        if (originalEnv) {
+          process.env.DATABASE_URL = originalEnv;
+        } else {
+          delete process.env.DATABASE_URL;
+        }
+      }
+    });
+
+    it('should extract plain string database URL', async () => {
+      // Create a schema with plain string URL
+      const schemaContent = `
+        generator client {
+          provider = "prisma-client-js"
+        }
+
+        datasource db {
+          provider = "mysql"
+          url      = "mysql://user:pass@localhost:3306/testdb"
+        }
+
+        model User {
+          id   Int    @id @default(autoincrement())
+          name String
+        }
+      `;
+
+      const schemaPath = schemaManager.createCustomSchemaFile(schemaContent);
+      const schemaReader = new SchemaReader(schemaPath);
+      const databaseUrl = await schemaReader.getDatabaseUrl();
+      expect(databaseUrl).toBe('mysql://user:pass@localhost:3306/testdb');
+    });
+
+    it('should throw error when environment variable is not found', async () => {
+      // Create a schema with non-existent env variable
+      const schemaContent = `
+        generator client {
+          provider = "prisma-client-js"
+        }
+
+        datasource db {
+          provider = "mysql"
+          url      = env("NON_EXISTENT_DB_URL")
+        }
+
+        model User {
+          id   Int    @id @default(autoincrement())
+          name String
+        }
+      `;
+
+      const schemaPath = schemaManager.createCustomSchemaFile(schemaContent);
+      const schemaReader = new SchemaReader(schemaPath);
+
+      await expect(schemaReader.getDatabaseUrl()).rejects.toThrow(
+        'Environment variable "NON_EXISTENT_DB_URL" not found',
+      );
+    });
+
+    it('should throw error when no datasource is found', async () => {
+      // Create a schema without datasource
+      const schemaContent = `
+        generator client {
+          provider = "prisma-client-js"
+        }
+
+        model User {
+          id   Int    @id @default(autoincrement())
+          name String
+        }
+      `;
+
+      const schemaPath = schemaManager.createCustomSchemaFile(schemaContent);
+      const schemaReader = new SchemaReader(schemaPath);
+
+      await expect(schemaReader.getDatabaseUrl()).rejects.toThrow(
+        'No datasource found in schema',
+      );
+    });
+
+    it('should throw error when no url is specified in datasource', async () => {
+      // Create a schema without url in datasource
+      const schemaContent = `
+        generator client {
+          provider = "prisma-client-js"
+        }
+
+        datasource db {
+          provider = "mysql"
+        }
+
+        model User {
+          id   Int    @id @default(autoincrement())
+          name String
+        }
+      `;
+
+      const schemaPath = schemaManager.createCustomSchemaFile(schemaContent);
+      const schemaReader = new SchemaReader(schemaPath);
+
+      await expect(schemaReader.getDatabaseUrl()).rejects.toThrow(
+        'No url specified in datasource',
+      );
+    });
+  });
 });

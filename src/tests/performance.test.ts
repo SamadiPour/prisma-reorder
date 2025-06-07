@@ -23,6 +23,11 @@ describe('Performance Tests', () => {
     schemaManager = setupSchemaManager('performance');
     migrationManager = setupMigrationManager('performance');
 
+    // Mock SchemaReader getDatabaseUrl method
+    jest
+      .spyOn(SchemaReader.prototype, 'getDatabaseUrl')
+      .mockResolvedValue('mysql://test:test@localhost:3306/testdb');
+
     // Mock DatabaseConnector methods for performance tests
     jest.spyOn(DatabaseConnector.prototype, 'connect').mockResolvedValue();
     jest.spyOn(DatabaseConnector.prototype, 'disconnect').mockResolvedValue();
@@ -252,7 +257,8 @@ ALTER TABLE \`User\` ADD COLUMN \`email\` VARCHAR(191) NOT NULL;`;
 
       let largeMigration = '-- Multiple ADD COLUMN operations\n';
       for (let i = 0; i < 20; i++) {
-        largeMigration += `ALTER TABLE \`User\` ADD COLUMN \`field${i}\` VARCHAR(255);\n`;
+        largeMigration += `ALTER TABLE \`User\`
+          ADD COLUMN \`field${i}\` VARCHAR(255);  `;
       }
 
       migrationManager.createMigration({
