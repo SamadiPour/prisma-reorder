@@ -2,21 +2,59 @@
   "name": "prisma-reorder",
   "version": "1.0.0",
   "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "bin": {
     "prisma-reorder": "./dist/cli.js"
   },
+  "files": [
+    "dist/"
+  ],
+  "keywords": [
+    "prisma",
+    "mysql",
+    "mariadb",
+    "database",
+    "migration",
+    "column-order",
+    "schema",
+    "orm",
+    "typescript",
+    "cli"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/SamadiPour/prisma-reorder.git"
+  },
+  "bugs": {
+    "url": "https://github.com/SamadiPour/prisma-reorder/issues"
+  },
+  "homepage": "https://github.com/SamadiPour/prisma-reorder/prisma-reorder#readme",
+  "engines": {
+    "node": ">=16.0.0"
+  },
   "scripts": {
     "build": "tsc",
+    "clean": "rimraf dist",
+    "prebuild": "npm run clean",
+    "prepublishOnly": "npm run test && npm run build",
+    "prepack": "npm run build",
     "start": "ts-node src/index.ts",
     "dev": "ts-node-dev --respawn src/index.ts",
     "test": "jest",
+    "test:coverage": "jest --coverage",
     "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
     "lint:fix": "eslint . --ext .js,.jsx,.ts,.tsx --fix",
-    "format": "prettier --write \"**/*.{js,jsx,ts,tsx,json,css,scss,md}\""
+    "format": "prettier --write \"**/*.{js,jsx,ts,tsx,json,css,scss,md}\"",
+    "version": "npm run format && git add -A src",
+    "postversion": "git push && git push --tags",
+    "release:patch": "npm version patch && npm publish",
+    "release:minor": "npm version minor && npm publish",
+    "release:major": "npm version major && npm publish",
+    "release:beta": "npm version prerelease --preid=beta && npm publish --tag beta"
   },
-  "author": "",
-  "license": "ISC",
-  "description": "",
+  "author": "Amir Hossein SamadiPour",
+  "license": "MIT",
+  "description": "A TypeScript NPM package that enhances Prisma ORM by enabling automatic column reordering in MySQL/MariaDB databases to match the column order defined in the Prisma schema.",
   "devDependencies": {
     "@types/dotenv": "^6.1.1",
     "@types/jest": "^29.5.14",
