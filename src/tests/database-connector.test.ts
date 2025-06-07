@@ -1,32 +1,40 @@
 import { DatabaseConnector } from '../lib/database-connector';
+import mysql from 'mysql2/promise';
 
-// Mock PrismaClient to avoid actual database connections in tests
-const mockPrismaClient = {
-  $connect: jest.fn().mockResolvedValue(undefined),
-  $disconnect: jest.fn().mockResolvedValue(undefined),
-  $queryRawUnsafe: jest.fn(),
-  $executeRawUnsafe: jest.fn(),
-  $queryRaw: jest.fn().mockResolvedValue([{ '1': 1 }]),
+// Mock mysql2 to avoid actual database connections in tests
+const mockConnection = {
+  execute: jest.fn(),
+  end: jest.fn().mockResolvedValue(undefined),
 };
 
-jest.mock('@prisma/client', () => ({
-  PrismaClient: jest.fn().mockImplementation(() => mockPrismaClient),
+jest.mock('mysql2/promise', () => ({
+  createConnection: jest.fn(),
 }));
+
+const mockMysql = mysql as jest.Mocked<typeof mysql>;
 
 describe('DatabaseConnector', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    // Set up the mock to return our mock connection
+    mockMysql.createConnection.mockResolvedValue(mockConnection as any);
   });
 
   describe('initialization', () => {
     it('should initialize with MySQL provider', () => {
-      const connector = new DatabaseConnector('mysql');
+      const connector = new DatabaseConnector(
+        'mysql',
+        'mysql://test:test@localhost:3306/test',
+      );
       expect(connector).toBeDefined();
       expect(connector).toBeInstanceOf(DatabaseConnector);
     });
 
     it('should initialize with MariaDB provider', () => {
-      const connector = new DatabaseConnector('mariadb');
+      const connector = new DatabaseConnector(
+        'mariadb',
+        'mysql://test:test@localhost:3306/test',
+      );
       expect(connector).toBeDefined();
       expect(connector).toBeInstanceOf(DatabaseConnector);
     });
@@ -36,30 +44,36 @@ describe('DatabaseConnector', () => {
     let connector: DatabaseConnector;
 
     beforeEach(() => {
-      connector = new DatabaseConnector('mysql');
+      connector = new DatabaseConnector(
+        'mysql',
+        'mysql://test:test@localhost:3306/test',
+      );
     });
 
     it('should connect to database', async () => {
       await connector.connect();
-      expect(mockPrismaClient.$connect).toHaveBeenCalledTimes(1);
+      expect(mockMysql.createConnection).toHaveBeenCalledTimes(1);
     });
 
     it('should disconnect from database', async () => {
+      await connector.connect();
       await connector.disconnect();
-      expect(mockPrismaClient.$disconnect).toHaveBeenCalledTimes(1);
+      expect(mockConnection.end).toHaveBeenCalledTimes(1);
     });
 
     it('should test connection successfully', async () => {
+      mockConnection.execute.mockResolvedValue([[]]);
+
       const result = await connector.testConnection();
 
       expect(result.success).toBe(true);
       expect(result.error).toBeUndefined();
-      expect(mockPrismaClient.$queryRaw).toHaveBeenCalled();
+      expect(mockConnection.execute).toHaveBeenCalledWith('SELECT 1 as test');
     });
 
     it('should handle connection test failure', async () => {
       const errorMessage = 'Connection failed';
-      mockPrismaClient.$queryRaw.mockRejectedValue(new Error(errorMessage));
+      mockConnection.execute.mockRejectedValue(new Error(errorMessage));
 
       const result = await connector.testConnection();
 
@@ -72,7 +86,10 @@ describe('DatabaseConnector', () => {
     let connector: DatabaseConnector;
 
     beforeEach(() => {
-      connector = new DatabaseConnector('mysql');
+      connector = new DatabaseConnector(
+        'mysql',
+        'mysql://test:test@localhost:3306/test',
+      );
     });
 
     describe('getTableMetadata', () => {
@@ -110,8 +127,9 @@ describe('DatabaseConnector', () => {
           },
         ];
 
-        mockPrismaClient.$queryRawUnsafe.mockResolvedValue(mockColumns);
+        mockConnection.execute.mockResolvedValue([mockColumns]);
 
+        await connector.connect();
         const metadata = await connector.getTableMetadata('users');
 
         expect(metadata.name).toBe('users');
@@ -185,8 +203,9 @@ describe('DatabaseConnector', () => {
           },
         ];
 
-        mockPrismaClient.$queryRawUnsafe.mockResolvedValue(mockColumns);
+        mockConnection.execute.mockResolvedValue([mockColumns]);
 
+        await connector.connect();
         const metadata = await connector.getTableMetadata('users');
 
         expect(metadata.columns[0].name).toBe('id');
@@ -236,10 +255,11 @@ describe('DatabaseConnector', () => {
           },
         ];
 
-        mockPrismaClient.$queryRawUnsafe
-          .mockResolvedValueOnce(usersColumns)
-          .mockResolvedValueOnce(postsColumns);
+        mockConnection.execute
+          .mockResolvedValueOnce([usersColumns])
+          .mockResolvedValueOnce([postsColumns]);
 
+        await connector.connect();
         const metadata = await connector.getTablesMetadata(['users', 'posts']);
 
         expect(metadata).toHaveLength(2);
@@ -300,8 +320,9 @@ describe('DatabaseConnector', () => {
           },
         ];
 
-        mockPrismaClient.$queryRawUnsafe.mockResolvedValue(mockColumns);
+        mockConnection.execute.mockResolvedValue([mockColumns]);
 
+        await connector.connect();
         const metadata = await connector.getTableMetadata('test_table');
 
         expect(metadata.columns[0].type).toBe('int(11) NOT NULL');
@@ -322,24 +343,29 @@ describe('DatabaseConnector', () => {
     let connector: DatabaseConnector;
 
     beforeEach(() => {
-      connector = new DatabaseConnector('mysql');
+      connector = new DatabaseConnector(
+        'mysql',
+        'mysql://test:test@localhost:3306/test',
+      );
     });
 
     it('should execute raw SQL statements', async () => {
       const sql = 'ALTER TABLE users ADD COLUMN test VARCHAR(255)';
-      mockPrismaClient.$executeRawUnsafe.mockResolvedValue(1);
+      mockConnection.execute.mockResolvedValue([{ affectedRows: 1 }]);
 
+      await connector.connect();
       const result = await connector.executeRaw(sql);
 
-      expect(mockPrismaClient.$executeRawUnsafe).toHaveBeenCalledWith(sql);
-      expect(result).toBe(1);
+      expect(mockConnection.execute).toHaveBeenCalledWith(sql);
+      expect(result).toEqual({ affectedRows: 1 });
     });
 
     it('should handle SQL execution errors', async () => {
       const sql = 'INVALID SQL STATEMENT';
       const error = new Error('SQL syntax error');
-      mockPrismaClient.$executeRawUnsafe.mockRejectedValue(error);
+      mockConnection.execute.mockRejectedValue(error);
 
+      await connector.connect();
       await expect(connector.executeRaw(sql)).rejects.toThrow(
         'SQL syntax error',
       );
@@ -350,20 +376,24 @@ describe('DatabaseConnector', () => {
     let connector: DatabaseConnector;
 
     beforeEach(() => {
-      connector = new DatabaseConnector('mysql');
+      connector = new DatabaseConnector(
+        'mysql',
+        'mysql://test:test@localhost:3306/test',
+      );
     });
 
     it('should handle database connection errors', async () => {
       const error = new Error('Connection timeout');
-      mockPrismaClient.$connect.mockRejectedValue(error);
+      mockMysql.createConnection.mockRejectedValue(error);
 
       await expect(connector.connect()).rejects.toThrow('Connection timeout');
     });
 
     it('should handle query errors gracefully', async () => {
       const error = new Error('Table does not exist');
-      mockPrismaClient.$queryRawUnsafe.mockRejectedValue(error);
+      mockConnection.execute.mockRejectedValue(error);
 
+      await connector.connect();
       await expect(connector.getTableMetadata('nonexistent')).rejects.toThrow(
         'Table does not exist',
       );
@@ -372,27 +402,75 @@ describe('DatabaseConnector', () => {
 
   describe('provider-specific behavior', () => {
     it('should use MySQL-specific queries for mysql provider', async () => {
-      const connector = new DatabaseConnector('mysql');
-      mockPrismaClient.$queryRawUnsafe.mockResolvedValue([]);
+      const connector = new DatabaseConnector(
+        'mysql',
+        'mysql://test:test@localhost:3306/test',
+      );
+      mockConnection.execute.mockResolvedValue([[]]);
 
+      await connector.connect();
       await connector.getTableMetadata('test_table');
 
-      expect(mockPrismaClient.$queryRawUnsafe).toHaveBeenCalledWith(
+      expect(mockConnection.execute).toHaveBeenCalledWith(
         expect.stringContaining('INFORMATION_SCHEMA.COLUMNS'),
-        'test_table',
+        ['test_table'],
       );
     });
 
     it('should use MySQL-specific queries for mariadb provider', async () => {
-      const connector = new DatabaseConnector('mariadb');
-      mockPrismaClient.$queryRawUnsafe.mockResolvedValue([]);
+      const connector = new DatabaseConnector(
+        'mariadb',
+        'mysql://test:test@localhost:3306/test',
+      );
+      mockConnection.execute.mockResolvedValue([[]]);
 
+      await connector.connect();
       await connector.getTableMetadata('test_table');
 
-      expect(mockPrismaClient.$queryRawUnsafe).toHaveBeenCalledWith(
+      expect(mockConnection.execute).toHaveBeenCalledWith(
         expect.stringContaining('INFORMATION_SCHEMA.COLUMNS'),
-        'test_table',
+        ['test_table'],
       );
+    });
+  });
+
+  describe('table existence check', () => {
+    let connector: DatabaseConnector;
+
+    beforeEach(() => {
+      connector = new DatabaseConnector(
+        'mysql',
+        'mysql://test:test@localhost:3306/test',
+      );
+    });
+
+    it('should return true for existing table', async () => {
+      mockConnection.execute.mockResolvedValue([[{ TABLE_NAME: 'users' }]]);
+
+      await connector.connect();
+      const exists = await connector.tableExists('users');
+
+      expect(exists).toBe(true);
+      expect(mockConnection.execute).toHaveBeenCalledWith(
+        expect.stringContaining('INFORMATION_SCHEMA.TABLES'),
+        ['users'],
+      );
+    });
+
+    it('should return false for non-existing table', async () => {
+      mockConnection.execute.mockResolvedValue([[]]);
+
+      const exists = await connector.tableExists('nonexistent');
+
+      expect(exists).toBe(false);
+    });
+
+    it('should return false on query error', async () => {
+      mockConnection.execute.mockRejectedValue(new Error('Query error'));
+
+      const exists = await connector.tableExists('test');
+
+      expect(exists).toBe(false);
     });
   });
 });

@@ -5,14 +5,12 @@ import { MigrationFixer } from '../lib/migration-fixer';
 import { setupSchemaManager } from './utils/t_schema_manager';
 import { setupMigrationManager } from './utils/t_migration_manager';
 
-// Mock PrismaClient for performance tests
-jest.mock('@prisma/client', () => ({
-  PrismaClient: jest.fn().mockImplementation(() => ({
-    $connect: jest.fn().mockResolvedValue(undefined),
-    $disconnect: jest.fn().mockResolvedValue(undefined),
-    $queryRawUnsafe: jest.fn().mockResolvedValue([]),
-    $executeRawUnsafe: jest.fn().mockResolvedValue(undefined),
-  })),
+// Mock mysql2 for performance tests
+jest.mock('mysql2/promise', () => ({
+  createConnection: jest.fn().mockResolvedValue({
+    execute: jest.fn().mockResolvedValue([[], {}]),
+    end: jest.fn().mockResolvedValue(undefined),
+  }),
 }));
 
 describe('Performance Tests', () => {

@@ -1,9 +1,10 @@
 import { SchemaReader } from './schema-reader';
-import { type ColumnMetadata, DatabaseConnector } from './database-connector';
+import { DatabaseConnector } from './database-connector';
 import {
-  type ColumnChange,
-  type ReorderResult,
-  type SupportedProvider,
+  ColumnChange,
+  ColumnMetadata,
+  ReorderResult,
+  SupportedProvider,
 } from '../types';
 
 /**
@@ -110,7 +111,9 @@ export class ColumnReorderGenerator {
     const tableMetadata = await this.dbConnector.getTableMetadata(tableName);
 
     // Extract current column order from database
-    const currentDbOrder = tableMetadata.columns.map((col) => col.name);
+    const currentDbOrder = tableMetadata.columns.map(
+      (col: ColumnMetadata) => col.name,
+    );
 
     // Convert schema field order to column order using mapping
     const expectedColumnOrder = schemaFieldOrder
@@ -141,7 +144,7 @@ export class ColumnReorderGenerator {
 
         // Find the column metadata
         const columnMetadata = tableMetadata.columns.find(
-          (col) => col.name === columnName,
+          (col: ColumnMetadata) => col.name === columnName,
         );
         if (!columnMetadata) {
           throw new Error(`Column metadata not found for ${columnName}`);

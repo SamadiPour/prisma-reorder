@@ -5,15 +5,12 @@ import { SchemaReader } from '../lib/schema-reader';
 import { setupSchemaManager } from './utils/t_schema_manager';
 import { type SyncOptions } from '../types';
 
-// Mock PrismaClient to avoid actual database connections in tests
-jest.mock('@prisma/client', () => ({
-  PrismaClient: jest.fn().mockImplementation(() => ({
-    $connect: jest.fn().mockResolvedValue(undefined),
-    $disconnect: jest.fn().mockResolvedValue(undefined),
-    $queryRawUnsafe: jest.fn().mockResolvedValue([]),
-    $executeRawUnsafe: jest.fn().mockResolvedValue(undefined),
-    $queryRaw: jest.fn().mockResolvedValue([]),
-  })),
+// Mock mysql2 to avoid actual database connections in tests
+jest.mock('mysql2/promise', () => ({
+  createConnection: jest.fn().mockResolvedValue({
+    execute: jest.fn().mockResolvedValue([[], {}]),
+    end: jest.fn().mockResolvedValue(undefined),
+  }),
 }));
 
 describe('SyncCommand', () => {
@@ -377,13 +374,19 @@ describe('ColumnReorderGenerator', () => {
 describe('DatabaseConnector', () => {
   describe('initialization', () => {
     it('should initialize for MySQL', () => {
-      const connector = new DatabaseConnector('mysql');
+      const connector = new DatabaseConnector(
+        'mysql',
+        'mysql://test:test@localhost:3306/test',
+      );
       expect(connector).toBeDefined();
       expect(connector).toBeInstanceOf(DatabaseConnector);
     });
 
     it('should initialize for MariaDB', () => {
-      const connector = new DatabaseConnector('mariadb');
+      const connector = new DatabaseConnector(
+        'mariadb',
+        'mysql://test:test@localhost:3306/test',
+      );
       expect(connector).toBeDefined();
       expect(connector).toBeInstanceOf(DatabaseConnector);
     });
@@ -393,7 +396,10 @@ describe('DatabaseConnector', () => {
     let connector: DatabaseConnector;
 
     beforeEach(() => {
-      connector = new DatabaseConnector('mysql');
+      connector = new DatabaseConnector(
+        'mysql',
+        'mysql://test:test@localhost:3306/test',
+      );
     });
 
     it('should connect successfully', async () => {
@@ -415,7 +421,10 @@ describe('DatabaseConnector', () => {
     let connector: DatabaseConnector;
 
     beforeEach(() => {
-      connector = new DatabaseConnector('mysql');
+      connector = new DatabaseConnector(
+        'mysql',
+        'mysql://test:test@localhost:3306/test',
+      );
     });
 
     it('should get table metadata', async () => {

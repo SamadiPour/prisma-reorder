@@ -399,54 +399,48 @@ export class SchemaReader {
 
       // If we already extracted the env var name from the function object, use it
       if (envVarName) {
-        // Try to load from .env file using ConfigReader
+        // Try to get the environment variable value
+        let envValue: string | undefined;
+
         try {
           const configReader = new ConfigReader();
-          const envValue = configReader.get(envVarName);
-
-          if (!envValue) {
-            throw new Error(
-              `Environment variable "${envVarName}" not found in .env file or environment`,
-            );
-          }
-
-          return envValue;
+          envValue = configReader.get(envVarName);
         } catch (configError) {
-          // If .env file loading fails, try process.env as fallback
-          const envValue = process.env[envVarName];
-          if (!envValue) {
-            throw new Error(`Environment variable "${envVarName}" not found`);
-          }
-          return envValue;
+          // If ConfigReader fails, fall back to process.env
+          envValue = process.env[envVarName];
         }
+
+        if (!envValue) {
+          throw new Error(
+            `Environment variable "${envVarName}" not found in .env file or environment`,
+          );
+        }
+
+        return envValue;
       } else {
         // Check if it's an environment variable reference using regex (fallback)
         const envMatch = urlValue.match(/env\("([^"]+)"\)/);
         if (envMatch) {
           const envVarNameFromRegex = envMatch[1];
 
-          // Try to load from .env file using ConfigReader
+          // Try to get the environment variable value
+          let envValue: string | undefined;
+
           try {
             const configReader = new ConfigReader();
-            const envValue = configReader.get(envVarNameFromRegex);
-
-            if (!envValue) {
-              throw new Error(
-                `Environment variable "${envVarNameFromRegex}" not found in .env file or environment`,
-              );
-            }
-
-            return envValue;
+            envValue = configReader.get(envVarNameFromRegex);
           } catch (configError) {
-            // If .env file loading fails, try process.env as fallback
-            const envValue = process.env[envVarNameFromRegex];
-            if (!envValue) {
-              throw new Error(
-                `Environment variable "${envVarNameFromRegex}" not found`,
-              );
-            }
-            return envValue;
+            // If ConfigReader fails, fall back to process.env
+            envValue = process.env[envVarNameFromRegex];
           }
+
+          if (!envValue) {
+            throw new Error(
+              `Environment variable "${envVarNameFromRegex}" not found in .env file or environment`,
+            );
+          }
+
+          return envValue;
         } else {
           // It's a plain string, remove quotes if present
           return urlValue;

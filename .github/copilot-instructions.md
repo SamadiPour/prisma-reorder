@@ -40,7 +40,7 @@ Maintaining a consistent column order improves readability, schema diff clarity,
 ## Tech Stack & Ecosystem:
 
 - TypeScript
-- Prisma SDK & prisma-ast
+- prisma-ast
 - SQL generator/parser libraries
 - File system utilities (to read migration files)
 - CLI interface (using commander)

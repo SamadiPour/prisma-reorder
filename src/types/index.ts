@@ -91,3 +91,37 @@ export interface FixMigrationOptions {
   verbose?: boolean;
   apply?: boolean;
 }
+
+/**
+ * Database column metadata
+ */
+export interface ColumnMetadata {
+  name: string;
+  type: string;
+  nullable: boolean;
+  defaultValue: string | null;
+  isAutoIncrement: boolean;
+  isPrimaryKey: boolean;
+  isUnique: boolean;
+  extra: string;
+  position: number;
+}
+
+/**
+ * Database table metadata
+ */
+export interface TableMetadata {
+  name: string;
+  columns: ColumnMetadata[];
+}
+
+/**
+ * Database connection configuration
+ */
+export interface DatabaseConfig {
+  host: string;
+  port: number;
+  user: string;
+  password: string;
+  database: string;
+}

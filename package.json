@@ -36,11 +36,9 @@
   },
   "dependencies": {
     "@mrleebo/prisma-ast": "^0.12.1",
-    "@prisma/client": "^6.8.2",
-    "@prisma/internals": "^6.8.2",
     "commander": "^14.0.0",
     "dotenv": "^16.5.0",
     "dotenv-expand": "^12.0.2",
-    "prisma": "^6.8.2"
+    "mysql2": "^3.14.1"
   }
 }

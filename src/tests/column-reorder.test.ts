@@ -76,7 +76,10 @@ describe('ColumnReorderGenerator', () => {
       });
 
       // Mock database connector
-      const mockDbConnector = new MockedDatabaseConnector('mysql');
+      const mockDbConnector = new MockedDatabaseConnector(
+        'mysql',
+        'mysql://test:test@localhost:3306/test',
+      );
       mockDbConnector.connect = jest.fn().mockResolvedValue(undefined);
       mockDbConnector.disconnect = jest.fn().mockResolvedValue(undefined);
       mockDbConnector.getTablesMetadata = jest.fn().mockResolvedValue([]);
@@ -162,7 +165,10 @@ describe('ColumnReorderGenerator', () => {
       );
 
       // Mock database connector with tableExists
-      const mockDbConnector = new MockedDatabaseConnector('mysql');
+      const mockDbConnector = new MockedDatabaseConnector(
+        'mysql',
+        'mysql://test:test@localhost:3306/test',
+      );
       mockDbConnector.connect = jest.fn().mockResolvedValue(undefined);
       mockDbConnector.disconnect = jest.fn().mockResolvedValue(undefined);
       mockDbConnector.tableExists = jest.fn().mockResolvedValue(true);
@@ -343,7 +349,10 @@ describe('ColumnReorderGenerator', () => {
       );
 
       // Mock database connector with columns in correct order
-      const mockDbConnector = new MockedDatabaseConnector('mysql');
+      const mockDbConnector = new MockedDatabaseConnector(
+        'mysql',
+        'mysql://test:test@localhost:3306/test',
+      );
       mockDbConnector.connect = jest.fn().mockResolvedValue(undefined);
       mockDbConnector.disconnect = jest.fn().mockResolvedValue(undefined);
       mockDbConnector.tableExists = jest.fn().mockResolvedValue(true);
@@ -507,7 +516,10 @@ describe('ColumnReorderGenerator', () => {
         ]),
       );
 
-      const mockDbConnector = new MockedDatabaseConnector('mysql');
+      const mockDbConnector = new MockedDatabaseConnector(
+        'mysql',
+        'mysql://test:test@localhost:3306/test',
+      );
       mockDbConnector.connect = jest.fn().mockResolvedValue(undefined);
       mockDbConnector.disconnect = jest.fn().mockResolvedValue(undefined);
       mockDbConnector.tableExists = jest.fn().mockResolvedValue(true);
@@ -602,7 +614,10 @@ describe('ColumnReorderGenerator', () => {
         errors: [],
       });
 
-      const mockDbConnector = new MockedDatabaseConnector('mysql');
+      const mockDbConnector = new MockedDatabaseConnector(
+        'mysql',
+        'mysql://test:test@localhost:3306/test',
+      );
       mockDbConnector.connect = jest.fn().mockResolvedValue(undefined);
       mockDbConnector.disconnect = jest.fn().mockResolvedValue(undefined);
 
@@ -623,7 +638,10 @@ describe('ColumnReorderGenerator', () => {
         errors: [],
       });
 
-      const mockDbConnector = new MockedDatabaseConnector('mysql');
+      const mockDbConnector = new MockedDatabaseConnector(
+        'mysql',
+        'mysql://test:test@localhost:3306/test',
+      );
       mockDbConnector.connect = jest
         .fn()
         .mockRejectedValue(new Error('Connection failed'));
@@ -696,7 +714,10 @@ describe('ColumnReorderGenerator', () => {
         ]),
       );
 
-      const mockDbConnector = new MockedDatabaseConnector('mysql');
+      const mockDbConnector = new MockedDatabaseConnector(
+        'mysql',
+        'mysql://test:test@localhost:3306/test',
+      );
       mockDbConnector.connect = jest.fn().mockResolvedValue(undefined);
       mockDbConnector.disconnect = jest.fn().mockResolvedValue(undefined);
       mockDbConnector.tableExists = jest.fn().mockResolvedValue(true);
@@ -843,7 +864,10 @@ describe('ColumnReorderGenerator', () => {
         ]),
       );
 
-      const mockDbConnector = new MockedDatabaseConnector('mariadb');
+      const mockDbConnector = new MockedDatabaseConnector(
+        'mariadb',
+        'mysql://test:test@localhost:3306/test',
+      );
       mockDbConnector.connect = jest.fn().mockResolvedValue(undefined);
       mockDbConnector.disconnect = jest.fn().mockResolvedValue(undefined);
       mockDbConnector.tableExists = jest.fn().mockResolvedValue(true);
@@ -976,7 +1000,10 @@ describe('ColumnReorderGenerator', () => {
         ]),
       );
 
-      const mockDbConnector = new MockedDatabaseConnector('mysql');
+      const mockDbConnector = new MockedDatabaseConnector(
+        'mysql',
+        'mysql://test:test@localhost:3306/test',
+      );
       mockDbConnector.connect = jest.fn().mockResolvedValue(undefined);
       mockDbConnector.disconnect = jest.fn().mockResolvedValue(undefined);
       mockDbConnector.tableExists = jest.fn().mockResolvedValue(true);

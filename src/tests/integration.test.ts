@@ -9,14 +9,12 @@ import { setupSchemaManager, TEST_SCHEMAS } from './utils/t_schema_manager';
 import { setupMigrationManager } from './utils/t_migration_manager';
 import { type FixMigrationOptions, type SyncOptions } from '../types';
 
-// Mock PrismaClient for integration tests
-jest.mock('@prisma/client', () => ({
-  PrismaClient: jest.fn().mockImplementation(() => ({
-    $connect: jest.fn().mockResolvedValue(undefined),
-    $disconnect: jest.fn().mockResolvedValue(undefined),
-    $queryRawUnsafe: jest.fn().mockResolvedValue([]),
-    $executeRawUnsafe: jest.fn().mockResolvedValue(undefined),
-  })),
+// Mock mysql2 for integration tests
+jest.mock('mysql2/promise', () => ({
+  createConnection: jest.fn().mockResolvedValue({
+    execute: jest.fn().mockResolvedValue([[], {}]),
+    end: jest.fn().mockResolvedValue(undefined),
+  }),
 }));
 
 describe('Integration Tests', () => {

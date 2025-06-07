@@ -1,65 +1,64 @@
-import { PrismaClient } from '@prisma/client';
-import { type SupportedProvider } from '../types';
+import mysql from 'mysql2/promise';
+import {
+  SupportedProvider,
+  DatabaseConfig,
+  TableMetadata,
+  ColumnMetadata,
+} from '../types';
 
 /**
- * Database column metadata
- */
-export interface ColumnMetadata {
-  name: string;
-  type: string;
-  nullable: boolean;
-  defaultValue: string | null;
-  isAutoIncrement: boolean;
-  isPrimaryKey: boolean;
-  isUnique: boolean;
-  extra: string;
-  position: number;
-}
-
-/**
- * Database table metadata
- */
-export interface TableMetadata {
-  name: string;
-  columns: ColumnMetadata[];
-}
-
-/**
- * Database connector for fetching column metadata
+ * Standalone database connector for fetching column metadata
  */
 export class DatabaseConnector {
-  private prisma: PrismaClient;
-  private provider: SupportedProvider;
+  private connection: mysql.Connection | null = null;
+  private readonly provider: SupportedProvider;
+  private config: DatabaseConfig;
 
-  constructor(provider: SupportedProvider, databaseUrl?: string) {
+  constructor(provider: SupportedProvider, databaseUrl: string) {
     this.provider = provider;
+    this.config = this.parseDatabaseUrl(databaseUrl);
+  }
 
-    // Create PrismaClient with custom database URL if provided
-    if (databaseUrl) {
-      this.prisma = new PrismaClient({
-        datasources: {
-          db: {
-            url: databaseUrl,
-          },
-        },
-      });
-    } else {
-      this.prisma = new PrismaClient();
-    }
+  /**
+   * Parse database URL into connection configuration
+   */
+  private parseDatabaseUrl(databaseUrl: string): DatabaseConfig {
+    const url = new URL(databaseUrl);
+
+    return {
+      host: url.hostname || 'localhost',
+      port: url.port ? parseInt(url.port, 10) : 3306,
+      user: url.username || 'root',
+      password: url.password || '',
+      database: url.pathname.replace('/', '') || 'test',
+    };
   }
 
   /**
    * Connect to the database
    */
   public async connect(): Promise<void> {
-    await this.prisma.$connect();
+    if (this.connection) {
+      return; // Already connected
+    }
+
+    this.connection = await mysql.createConnection({
+      host: this.config.host,
+      port: this.config.port,
+      user: this.config.user,
+      password: this.config.password,
+      database: this.config.database,
+    });
   }
 
   /**
    * Disconnect from the database
    */
   public async disconnect(): Promise<void> {
-    await this.prisma.$disconnect();
+    if (this.connection) {
+      await this.connection.end();
+      this.connection = null;
+    }
   }
 
   /**
@@ -93,7 +92,12 @@ export class DatabaseConnector {
    * Execute raw SQL statements
    */
   public async executeRaw(sql: string): Promise<any> {
-    return await this.prisma.$executeRawUnsafe(sql);
+    if (!this.connection) {
+      throw new Error('Database connection not established');
+    }
+
+    const [result] = await this.connection.execute(sql);
+    return result;
   }
 
   /**
@@ -117,6 +121,10 @@ export class DatabaseConnector {
   private async getMySQLColumnMetadata(
     tableName: string,
   ): Promise<ColumnMetadata[]> {
+    if (!this.connection) {
+      throw new Error('Database connection not established');
+    }
+
     const query = `
       SELECT COLUMN_NAME      as columnName,
              DATA_TYPE        as dataType,
@@ -132,10 +140,8 @@ export class DatabaseConnector {
       ORDER BY ORDINAL_POSITION
     `;
 
-    const result = (await this.prisma.$queryRawUnsafe(
-      query,
-      tableName,
-    )) as any[];
+    const [rows] = await this.connection.execute(query, [tableName]);
+    const result = rows as any[];
 
     return result.map((row: any, index: number) => ({
       name: row.columnName,
@@ -146,7 +152,7 @@ export class DatabaseConnector {
       isPrimaryKey: row.columnKey === 'PRI',
       isUnique: row.columnKey === 'UNI',
       extra: row.extra,
-      position: row.ordinalPosition || index + 1,
+      position: Number(row.ordinalPosition) || index + 1,
     }));
   }
 
@@ -199,9 +205,12 @@ export class DatabaseConnector {
    */
   public async testConnection(): Promise<{ success: boolean; error?: string }> {
     try {
-      await this.prisma.$connect();
+      if (!this.connection) {
+        await this.connect();
+      }
+
       // Try a simple query to verify the connection works
-      await this.prisma.$queryRaw`SELECT 1`;
+      await this.connection!.execute('SELECT 1 as test');
       return { success: true };
     } catch (error) {
       return {
@@ -217,17 +226,21 @@ export class DatabaseConnector {
    */
   public async tableExists(tableName: string): Promise<boolean> {
     try {
+      if (!this.connection) {
+        await this.connect();
+      }
+
       switch (this.provider) {
         case 'mysql':
         case 'mariadb':
-          const result = (await this.prisma.$queryRawUnsafe(
+          const [rows] = await this.connection!.execute(
             `SELECT TABLE_NAME
              FROM INFORMATION_SCHEMA.TABLES
              WHERE TABLE_SCHEMA = DATABASE()
                AND TABLE_NAME = ?`,
-            tableName,
-          )) as any[];
-          return result.length > 0;
+            [tableName],
+          );
+          return (rows as any[]).length > 0;
         default:
           return false;
       }
