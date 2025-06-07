@@ -21,7 +21,7 @@ program
 program
   .command('sync')
   .description(
-    'Generate SQL to sync database column order to match Prisma schema field order',
+    'Create a migration to sync database column order to match Prisma schema field order',
   )
   .option(
     '-m, --model [models...]',

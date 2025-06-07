@@ -31,7 +31,7 @@ yarn add prisma-reorder
 
 ### 1. `sync` - Reorder Database Columns
 
-The main command that analyzes your Prisma schema and reorders database columns to match the field order.
+The main command that analyzes your Prisma schema and creates a migration to reorder database columns to match the field order.
 
 ```bash
 npx prisma-reorder sync
@@ -45,7 +45,8 @@ npx prisma-reorder sync --verbose          # Show detailed output
 1. Connects to your database using Prisma
 2. Fetches actual column metadata and order from database tables
 3. Compares with the field order in your Prisma schema
-4. Generates `ALTER TABLE` statements with complete column definitions
+4. Creates a new migration file with `ALTER TABLE` statements
+5. Migration follows Prisma's naming convention: `[timestamp]_sync_column_order`
 
 ### 2. `fix-migration` - Fix Migration Files
 

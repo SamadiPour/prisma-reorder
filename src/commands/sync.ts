@@ -1,6 +1,7 @@
 import { ColumnReorderGenerator } from '../lib/column-reorder';
 import { SchemaReader } from '../lib/schema-reader';
 import { DatabaseConnector } from '../lib/database-connector';
+import { MigrationCreator } from '../lib';
 import { type SyncOptions } from '../types';
 
 /**
@@ -107,31 +108,62 @@ export class SyncCommand {
       }
 
       console.log(
-        `\n📋 Found ${results.length} model(s) that need column reordering:\n`,
+        `\n📋 Found ${results.length} model(s) that need column reordering\n`,
       );
 
-      for (const result of results) {
-        console.log(`🔧 Model: ${result.model}`);
-        console.log(`   Changes needed: ${result.changes.length}`);
+      // Generate combined SQL from all results
+      let combinedSql = '';
+      const allChanges: string[] = [];
 
+      for (const result of results) {
         if (verbose) {
+          console.log(`🔧 Model: ${result.model}`);
+          console.log(`   Changes needed: ${result.changes.length}`);
+
           result.changes.forEach((change) => {
             console.log(
               `   - Move "${change.column}" from position ${change.fromPosition} to ${change.toPosition}`,
             );
           });
+          console.log();
         }
 
-        console.log('\n   Generated SQL:');
-        result.sql.forEach((sql) => {
-          console.log(`   ${sql}`);
-        });
-        console.log();
+        // Add SQL to combined migration
+        if (result.sql.length > 0) {
+          combinedSql += `-- Reorder columns for ${result.model}\n`;
+          combinedSql += result.sql.join('\n') + '\n\n';
+          allChanges.push(
+            `Reordered ${result.changes.length} columns in ${result.model}`,
+          );
+        }
       }
 
-      console.log('\n✅ Column reorder SQL statements generated successfully!');
+      // Create migration file
+      const migrationCreator = new MigrationCreator();
+      const migrationResult = migrationCreator.createMigration(
+        combinedSql.trim(),
+        'sync_column_order',
+      );
+
+      if (!migrationResult.success) {
+        console.error('❌ Failed to create migration file:');
+        console.error(`   ${migrationResult.error}`);
+        process.exit(1);
+      }
+
+      console.log('✅ Migration file created successfully!');
+      console.log(`📁 Migration: ${migrationResult.migrationName}`);
+      console.log(`📄 File: ${migrationResult.migrationFile}`);
+
+      if (verbose) {
+        console.log('\n📋 Changes included:');
+        allChanges.forEach((change) => {
+          console.log(`   - ${change}`);
+        });
+      }
+
       console.log(
-        '💡 Review the SQL statements above and execute them manually in your database.',
+        '\n💡 Review the migration file and run `prisma migrate dev` to apply the changes.',
       );
     } catch (error) {
       console.error('❌ Error during sync operation:');

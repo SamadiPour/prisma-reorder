@@ -20,7 +20,7 @@
   "devDependencies": {
     "@types/dotenv": "^6.1.1",
     "@types/jest": "^29.5.14",
-    "@types/node": "^18.19.110",
+    "@types/node": "^18.19.111",
     "@typescript-eslint/eslint-plugin": "^5.62.0",
     "@typescript-eslint/parser": "^5.62.0",
     "eslint": "^8.57.1",
