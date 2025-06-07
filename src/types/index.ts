@@ -70,6 +70,14 @@ export interface MigrationFixResult {
 }
 
 /**
+ * Options for reading configuration from .env files
+ */
+export interface ConfigReaderOptions {
+  envPath?: string;
+  verbose?: boolean;
+}
+
+/**
  * CLI command options
  */
 export interface SyncOptions {
