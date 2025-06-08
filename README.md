@@ -31,7 +31,8 @@ yarn add prisma-reorder
 
 ### 1. `sync` - Reorder Database Columns
 
-The main command that analyzes your Prisma schema and creates a migration to reorder database columns to match the field order.
+The main command that analyzes your Prisma schema and creates a migration to reorder database columns to match the field
+order.
 
 ```bash
 npx prisma-reorder sync
@@ -140,6 +141,32 @@ analysis.models.forEach((model) => {
   });
 });
 ```
+
+## ⚠️ Performance Warning
+
+**Important**: Column reordering operations can be **expensive and time-consuming** for large tables. Please read this
+section carefully before running column reordering operations on production databases.
+
+### Performance Impact
+
+According
+to [MySQL's Online DDL documentation](https://dev.mysql.com/doc/refman/8.4/en/innodb-online-ddl-operations.html),
+reordering columns requires:
+
+- **Data reorganization**: The operation rebuilds the table substantially, making it expensive
+- **Table copying**: Data is reorganized during the operation
+- **Time proportional to table size**: Larger tables will take significantly longer
+- **Resource consumption**: High CPU, memory, and I/O usage during the operation
+
+### Recommendations
+
+1. **Test first**: Always test column reordering operations on a development/staging environment with production-sized
+   data
+2. **Backup**: Create a full backup before running operations on production databases
+3. **Maintenance windows**: Schedule operations during low-traffic periods
+4. **Monitor resources**: Ensure adequate server resources (CPU, memory, disk I/O) are available
+
+**Always benchmark with your specific data and hardware configuration.**
 
 ## 🛠️ Development
 
