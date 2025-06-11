@@ -28,7 +28,7 @@
   "bugs": {
     "url": "https://github.com/SamadiPour/prisma-reorder/issues"
   },
-  "homepage": "https://github.com/SamadiPour/prisma-reorder/prisma-reorder#readme",
+  "homepage": "https://github.com/SamadiPour/prisma-reorder#readme",
   "engines": {
     "node": ">=16.0.0"
   },
